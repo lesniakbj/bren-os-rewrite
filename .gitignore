@@ -5,6 +5,7 @@
 *.d
 
 # Toolchain
+*.tar.gz
 .toolchain/build/
 .toolchain/cross/
 .toolchain/cross-src/build-*/
