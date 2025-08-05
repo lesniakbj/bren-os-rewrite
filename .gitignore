@@ -1,0 +1,16 @@
+# Build artifacts
+*.iso
+*.bin
+*.o
+*.d
+
+# Toolchain
+.toolchain/build/
+.toolchain/cross/
+.toolchain/cross-src/build-*/
+.toolchain/cross-src/binutils-2.42/
+.toolchain/cross-src/gcc-13.3.0/
+.toolchain/cross-src/gdb-14.2/
+
+# IDE files
+.idea/

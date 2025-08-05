@@ -1,0 +1,113 @@
+# Connect to the QEMU GDB server
+target remote localhost:1234
+
+# Load your kernel binary with symbols
+file .toolchain/build/test-os.bin
+
+# Set breakpoints and define commands to execute when hit
+# This will make GDB automatically print information and continue
+
+# Breakpoint at gdt_init
+break gdt_init
+commands
+    echo --- Breakpoint: gdt_init (before return) ---
+
+    # Execute the function until it returns
+    finish
+
+    echo --- Breakpoint: gdt_init (after return) ---
+
+    info registers
+    # After gdt_init, GDT should be loaded. Dump its contents.
+    # Using the known GDT base address from qemu-register.txt
+    x /5xg 0x109880
+    continue
+end
+
+# Breakpoint at idt_init
+break idt_init
+commands
+    echo --- Breakpoint: idt_init (before return) ---
+
+    # Execute the function until it returns
+    finish
+
+    echo --- Breakpoint: idt_init (after return) ---
+
+    info registers
+    # After idt_init, IDT should be loaded. Dump its contents.
+    # Using the known IDT base address from qemu-register.txt
+    # We'll dump the first few entries and the keyboard entry (0x21)
+    x /10xg 0x109060
+    x /xg (0x109060 + (0x21 * 8)) # Dump keyboard IDT entry
+    continue
+end
+
+# Breakpoint at pic_remap
+break pic_remap
+commands
+    echo --- Breakpoint: pic_remap (before return) ---
+
+    # Execute the function until it returns
+    finish
+
+    echo --- Breakpoint: pic_remap (after return) ---
+
+    info registers
+    continue
+end
+
+# Breakpoint at enable_interrupts
+break enable_interrupts
+commands
+    echo --- Breakpoint: enable_interrupts (before return) ---
+
+    # Execute the function until it returns
+    finish
+
+    echo --- Breakpoint: enable_interrupts (after return) ---
+
+    info registers
+    continue
+end
+
+# Breakpoint at isr_common_stub (generic interrupt handler entry)
+break isr_common_stub
+commands
+    echo --- Breakpoint: isr_common_stub (on entry) ---
+
+    info registers
+    # Dump the stack frame passed to isr_handler_c
+    # The 'registers' struct is at esp + 32 (after push ds and pusha)
+    x /20xw $esp + 32
+    continue
+end
+
+# Breakpoint at isr_handler_c (C interrupt handler)
+break isr_handler_c
+commands
+    echo --- Breakpoint: isr_handler_c (on entry) ---
+
+    info registers
+    # The 'regs' argument is passed on the stack.
+    # It's the first argument, so it's at esp + 4 (return address)
+    # The struct itself is pointed to by this value.
+    x /20xw *(($esp + 4))
+    continue
+end
+
+# Breakpoint at keyboard_c_handler (specific keyboard handler)
+break keyboard_c_handler
+commands
+    echo --- Breakpoint: keyboard_c_handler (on entry) ---
+
+    info registers
+    continue
+end
+
+# Run the program
+continue
+# After all breakpoints are hit and continued, GDB will exit if QEMU exits.
+# If QEMU keeps running, GDB will wait.
+# You can manually quit GDB if needed.
+# quit
