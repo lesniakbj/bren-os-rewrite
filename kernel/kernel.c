@@ -1,12 +1,16 @@
-#include <kernel.h>
-#include <multiboot.h>
-#include <idt.h>
-#include <gdt.h>
-#include <pic.h>
-#include <terminal.h>
-#include <screen.h>
-#include <keyboard.h>
-#include <interrupts.h>
+#include <kernel/kernel.h>
+#include <kernel/multiboot.h>
+#include <arch/i386/idt.h>
+#include <arch/i386/gdt.h>
+#include <arch/i386/pic.h>
+#include <arch/i386/interrupts.h>
+#include <arch/i386/time.h>
+#include <drivers/terminal.h>
+#include <drivers/screen.h>
+#include <drivers/keyboard.h>
+#include <drivers/mouse.h>
+
+#include <arch/i386/memory.h>
 
 void debug_gdt();
 void debug_pic();
@@ -21,6 +25,9 @@ void kernel_main(kuint32_t magic, kuint32_t multiboot_addr) {
     /* Set MBI to the address of the Multiboot information structure. */
     mbi = (multiboot_info_t *) multiboot_addr;
 
+    /* Initialize our system clock based off of the RTC */
+    CMOS_Time current_time = time_init();
+
     /* Init screen so we can show any info to the user */
     screen_init(mbi);
 
@@ -31,56 +38,73 @@ void kernel_main(kuint32_t magic, kuint32_t multiboot_addr) {
         return;
     }
 
-    // TODO: Figure out boot order:
-    //       Right now I have:
-    //          1) Bootloader call main
-    //          2) Init screen for debugging
-    //          3) Init GDT
-    //          4) Remap PIC
-    //          5) Init IDT
-    //          6) Enable Interrupts
-    //
-    //       Somewhere in here I need to add the ability to initialize my memory manager, probably after 2 before 3...
-    //       The physical memory allocator should parse the mmap from mbi and identify RAM/Memory regions.
-    //       Virtual memory manager then fills page directories and tables, maps code and data of the kernel and then enables paging
-    //       Then, allocate a large hunk of memory for the Kernel heap. Have the heap allocator use this region (kmalloc/kfree will use this)
-
-
     /* Initialization sequence */
+    terminal_writestringf("Current Time: %d/%d/%d %d:%d:%d\n",
+                            current_time.month,
+                            current_time.day,
+                            current_time.year,
+                            current_time.hours,
+                            current_time.minutes,
+                            current_time.seconds);
+    terminal_writestringf("Unix timestamp: %d\n", time_to_unix_seconds(&current_time));
     terminal_writestring("Kernel Initializing...\n");
-    // terminal_writestring("\n");
+    terminal_writestring("\n");
 
     /* Initialize the GDT */
     gdt_init();
-    // debug_gdt(); // Temporarily commented out for debugging 0x00 interrupt
+    // debug_gdt();
     // terminal_writestring("\n");
 
     /* Remap the PIC */
     pic_remap(0x20, 0x28);
-    // debug_pic(); // Temporarily commented out for debugging 0x00 interrupt
+    // debug_pic();
     // terminal_writestring("\n");
 
     /* Initialize the IDT */
     idt_init();
-    debug_idt(); // Temporarily commented out for debugging 0x00 interrupt
+    // debug_idt();
+    // terminal_writestring("\n");
+
+    /* Initialize the Physical Memory Manager */
+    pmm_init(mbi);
+    terminal_writestring("\n");
+
+    // TODO: Heap allocation and managment
+    // Test allocation
+    // void *block = pmm_alloc_block();
+    // if (block) {
+    //     terminal_writestringf("Allocated a block at: 0x%x\n", block);
+    //     // And free it
+    //     pmm_free_block(block);
+    //     terminal_writestringf("Freed the block.\n");
+    // } else {
+    //     terminal_writestring("Could not allocate a block.\n");
+    // }
+    // terminal_writestring("\n");
+
 
     /* Initialize the keyboard */
     keyboard_init();
     register_interrupt_handler(0x21, keyboard_handler);
+    terminal_writestring("\n");
+
+    /* Initialize the mouse */
+    mouse_init();
+    register_interrupt_handler(0x2C, mouse_handler);
+    terminal_writestring("\n");
 
     /* Debug multiboot headers */
-    // debug_multiboot_header(mbi); // Temporarily commented out for debugging 0x00 interrupt
-    // terminal_writestring("\n");
+    debug_multiboot_header(mbi); // Temporarily commented out for debugging 0x00 interrupt
+    terminal_writestring("\n");
 
-    // TODO: Debug the GDT/PIC/IDT to figure out why interrupts for keyboards aren't working correctly yet....
-    // terminal_writestring("Enabling interrupts...\n");
+    terminal_writestring("Enabling interrupts...\n");
     enable_interrupts();
-    // terminal_writestring("Interrupts enabled.\n");
+    terminal_writestring("Interrupts enabled.\n");
 
-    //terminal_writestring("Hello World from the terminal!\n");
-    // terminal_writestring("\n");
-
+    terminal_writestring("Hello World from the terminal!\n");
+    terminal_writestring("\n");
 }
+
 
 void debug_pic() {
     char buf[33];

@@ -1,6 +1,6 @@
-#include <idt.h>
-#include <io.h>
-#include <interrupts.h>
+#include <arch/i386/idt.h>
+#include <arch/i386/io.h>
+#include <arch/i386/interrupts.h>
 
 // ISR stubs defined in isr_handlers.s
 extern void isr0();

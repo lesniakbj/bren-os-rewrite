@@ -1,4 +1,4 @@
-#include <pic.h>
+#include <arch/i386/pic.h>
 
 void pic_remap(kuint32_t offset1, kuint32_t offset2) {
     outb(PIC1_COMMAND, ICW1_INIT | ICW1_ICW4);
@@ -13,9 +13,10 @@ void pic_remap(kuint32_t offset1, kuint32_t offset2) {
     outb(PIC1_DATA, ICW4_8086);
     outb(PIC2_DATA, ICW4_8086);
 
-    // Set masks: Unmask IRQ1 (keyboard) on Master PIC, mask all on Slave PIC
-    outb(PIC1_DATA, 0xFD); // 1111 1101b: Unmask IRQ1 (bit 1 is 0)
-    outb(PIC2_DATA, 0xFF); // 1111 1111b: Mask all on Slave PIC
+    // Set masks: Unmask IRQ1 (keyboard) and IRQ2 (for slave PIC) on Master.
+    // Unmask IRQ12 (mouse) on Slave.
+    outb(PIC1_DATA, 0xF9); // 1111 1001b: Unmask IRQ1 and IRQ2.
+    outb(PIC2_DATA, 0xEF); // 1110 1111b: Unmask IRQ12.
 }
 
 kuint8_t pic_read_data_port(kuint16_t port) {

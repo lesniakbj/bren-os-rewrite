@@ -1,7 +1,7 @@
-#include <terminal.h>
-#include <multiboot.h>
-#include <screen.h>
-#include <font.h>
+#include <drivers/terminal.h>
+#include <kernel/multiboot.h>
+#include <drivers/screen.h>
+#include <fonts/font.h>
 
 static kuint32_t* framebuffer;
 static kuint32_t pitch;
@@ -54,7 +54,7 @@ void framebuffer_putchar(char c) {
             is_new_line = true;
             return;
         }
-        
+
         screen_draw_char(c, cursor_x, cursor_y, color_to_uint(current_color));
         cursor_x += 8; // Assuming a font width of 8
         if (cursor_x >= width) {
@@ -81,4 +81,3 @@ void framebuffer_writestring(const char* data) {
 void framebuffer_setcolor(vga_color_t fg, vga_color_t bg) {
     // Not implemented for framebuffer yet
 }
-

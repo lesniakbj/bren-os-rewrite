@@ -2,7 +2,7 @@
 #define KERNEL_SCREEN_H
 
 #include <libc/stdint.h>
-#include <multiboot.h>
+#include <kernel/multiboot.h>
 
 // ==============
 //  Frame Buffer

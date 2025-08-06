@@ -1,5 +1,5 @@
-#include <terminal.h>
-#include <multiboot.h>
+#include <drivers/terminal.h>
+#include <kernel/multiboot.h>
 
 extern void text_mode_console_init(void);
 extern void text_mode_clear(void);

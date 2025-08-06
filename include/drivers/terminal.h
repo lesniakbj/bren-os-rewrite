@@ -2,7 +2,7 @@
 #define TERMINAL_H
 
 #include <libc/stdlib.h>
-#include <multiboot.h>
+#include <kernel/multiboot.h>
 #include <libc/stdint.h>
 
 typedef enum {

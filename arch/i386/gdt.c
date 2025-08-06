@@ -1,4 +1,4 @@
-#include "gdt.h"
+#include <arch/i386/gdt.h>
 
 struct gdt_entry gdt_entries[GDT_ENTRIES];
 struct gdt_ptr gdt_ptr;

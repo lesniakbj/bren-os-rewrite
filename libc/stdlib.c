@@ -31,3 +31,13 @@ void itoa(char* str_buf, int base, int value) {
         p2--;
     }
 }
+
+ void* memcpy(void *destination, const void *source, size_t num) {
+     unsigned char *d = (unsigned char *)destination;
+     const unsigned char *s = (const unsigned char *)source;
+
+     for (size_t i = 0; i < num; ++i) {
+         d[i] = s[i];
+     }
+     return destination;
+ }

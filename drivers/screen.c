@@ -1,7 +1,7 @@
-#include <screen.h>
-#include <font.h>
-#include <cascadiamono.h>
-#include <terminal.h>
+#include <drivers/screen.h>
+#include <drivers/terminal.h>
+#include <fonts/font.h>
+#include <fonts/cascadiamono.h>
 
 static kuint32_t* framebuffer;
 static kuint32_t pitch;

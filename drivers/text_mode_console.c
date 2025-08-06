@@ -1,6 +1,6 @@
-#include <terminal.h>
-#include <multiboot.h>
-#include <screen.h>
+#include <drivers/terminal.h>
+#include <kernel/multiboot.h>
+#include <drivers/screen.h>
 
 static const int VGA_WIDTH = 80;
 static const int VGA_HEIGHT = 25;

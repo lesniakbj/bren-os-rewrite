@@ -1,0 +1,120 @@
+#include <drivers/mouse.h>
+#include <drivers/terminal.h>
+#include <libc/stdint.h>
+#include <arch/i386/io.h>
+
+// PS/2 Controller and Mouse Ports
+#define MOUSE_DATA_PORT   0x60
+#define MOUSE_CMD_PORT    0x64
+
+// State for reading mouse packets
+static kuint8_t mouse_cycle = 0;
+static kint8_t  mouse_packet[3];
+
+// Waits for the PS/2 controller's input buffer to be empty.
+static void mouse_wait_signal() {
+    kuint32_t timeout = 100000;
+    while (timeout--) {
+        // Bit 1 of the status port is the input buffer status.
+        // 0 means empty, 1 means full. We wait until it's empty.
+        if ((inb(MOUSE_CMD_PORT) & 0x02) == 0) {
+            return;
+        }
+    }
+}
+
+// Waits for the PS/2 controller's output buffer to be full.
+static void mouse_wait_data() {
+    kuint32_t timeout = 100000;
+    while (timeout--) {
+        // Bit 0 of the status port is the output buffer status.
+        // 1 means full, 0 means empty. We wait until it's full.
+        if ((inb(MOUSE_CMD_PORT) & 0x01) == 1) {
+            return;
+        }
+    }
+}
+
+// Sends a command byte to the mouse device.
+static void mouse_write(kuint8_t cmd) {
+    // Tell the controller we want to send a byte to the mouse.
+    mouse_wait_signal();
+    outb(MOUSE_CMD_PORT, 0xD4);
+    // Send the command byte.
+    mouse_wait_signal();
+    outb(MOUSE_DATA_PORT, cmd);
+}
+
+// Reads a data byte from the mouse device.
+static kuint8_t mouse_read() {
+    mouse_wait_data();
+    return inb(MOUSE_DATA_PORT);
+}
+
+// The interrupt handler for the mouse.
+void mouse_handler(struct registers *regs) {
+    // Read the byte from the mouse. This MUST be done to acknowledge
+    // the interrupt to the PS/2 controller.
+    kuint8_t data = inb(MOUSE_DATA_PORT);
+
+    // This is a state machine to read the 3-byte mouse packet.
+    switch(mouse_cycle) {
+        case 0:
+            // The first byte should have bit 3 set. This is a sync check.
+            // If it's not set, we are out of sync, so we reset.
+            if ((data & 0x08) != 0) {
+                mouse_packet[0] = data;
+                mouse_cycle++;
+            }
+            break;
+        case 1:
+            mouse_packet[1] = data;
+            mouse_cycle++;
+            break;
+        case 2:
+            mouse_packet[2] = data;
+            // We have the full packet. Process it.
+            terminal_writestringf("Mouse Packet: buttons=%x, x=%d, y=%d\n", mouse_packet[0], (kint8_t)mouse_packet[1], (kint8_t)mouse_packet[2]);
+            mouse_cycle = 0; // Reset for the next packet.
+            break;
+    }
+
+    // Send End-of-Interrupt to the PICs. This MUST be done to allow
+    // further interrupts to be processed.
+    outb(0xA0, 0x20); // EOI for slave PIC (IRQ 8-15)
+    outb(0x20, 0x20); // EOI for master PIC (IRQ 0-7)
+}
+
+
+
+// Initializes the mouse driver.
+void mouse_init(void) {
+    // Step 1: Enable the auxiliary device (the mouse).
+    mouse_wait_signal();
+    outb(MOUSE_CMD_PORT, 0xA8);
+
+    // Step 2: Enable interrupts from the mouse.
+    // We do this by getting the PS/2 controller's "Compaq Status Byte"
+    // and setting the IRQ12 enable bit (bit 1).
+    mouse_wait_signal();
+    outb(MOUSE_CMD_PORT, 0x20); // Command to get status byte.
+    mouse_wait_data();
+    kuint8_t status = inb(MOUSE_DATA_PORT);
+    status |= 0x02;  // Set bit 1 to enable IRQ12.
+    status &= ~0x20; // Clear bit 5, which disables the mouse clock.
+                     // This is important for some controllers.
+    mouse_wait_signal();
+    outb(MOUSE_CMD_PORT, 0x60); // Command to set status byte.
+    mouse_wait_signal();
+    outb(MOUSE_DATA_PORT, status);
+
+    // Step 3: Tell the mouse to use default settings.
+    mouse_write(0xF6);
+    mouse_read(); // Acknowledge the command.
+
+    // Step 4: Enable packet streaming from the mouse.
+    mouse_write(0xF4);
+    mouse_read(); // Acknowledge the command.
+
+    terminal_writestring("Mouse initialized.\n");
+}

@@ -11,7 +11,6 @@ struct registers {
 } __attribute__((packed));
 
 extern void isr_common_stub();
-extern void keyboard_isr_handler();
 
 // Extern to be called from asm
 typedef void (*interrupt_handler_t)(struct registers*);

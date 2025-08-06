@@ -1,6 +1,5 @@
 .intel_syntax noprefix
 
-.global keyboard_isr_handler
 .global isr_common_stub
 
 # Macro to define an ISR that does NOT push an error code
@@ -106,9 +105,3 @@ isr_common_stub:
 
     add esp, 8 # Pop the pushed interrupt number and error code
     iret
-
-# Keyboard ISR (now just jumps to common stub)
-keyboard_isr_handler:
-    push 0 # Dummy error code
-    push 33 # Push IRQ1 (0x21) number
-    jmp isr_common_stub

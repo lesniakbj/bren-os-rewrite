@@ -2,7 +2,7 @@
 #define ARCH_I386_PIC_H
 
 #include <libc/stdint.h>
-#include <io.h>
+#include <arch/i386/io.h>
 
 #define PIC1_COMMAND 0x20
 #define PIC1_DATA 0x21

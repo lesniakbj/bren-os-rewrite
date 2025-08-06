@@ -9,10 +9,10 @@ typedef unsigned short kuint16_t;
 typedef unsigned char  kuint8_t;
 
 // Signed
-typedef long kint64_t;
-typedef int   kint32_t;
-typedef short kint16_t;
-typedef char  kint8_t;
+typedef long    kint64_t;
+typedef int     kint32_t;
+typedef short   kint16_t;
+typedef char    kint8_t;
 
 // Size and Offset (pointer difference)
 typedef unsigned int size_t;
