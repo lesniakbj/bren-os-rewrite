@@ -3,7 +3,7 @@ CC = .toolchain/cross/bin/i686-elf-gcc
 AS = .toolchain/cross/bin/i686-elf-as
 
 # Compiler and linker flags
-CFLAGS = -Iinclude -std=gnu99 -ffreestanding -nostdinc -O2 -Wall -Wextra -g -MMD -MP -msoft-float
+CFLAGS = -Iinclude -std=gnu99 -ffreestanding -nostdinc -O2 -Wall -Wextra -g -MMD -MP -msoft-float -DDEBUG
 LDFLAGS = -T linker.ld -ffreestanding -O2 -nostdlib -lgcc
 
 # Source files

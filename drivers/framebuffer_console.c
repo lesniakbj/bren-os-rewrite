@@ -81,3 +81,7 @@ void framebuffer_writestring(const char* data) {
 void framebuffer_setcolor(vga_color_t fg, vga_color_t bg) {
     // Not implemented for framebuffer yet
 }
+
+void framebuffer_scroll() {
+
+}

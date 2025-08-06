@@ -2,10 +2,14 @@
 #include <kernel/multiboot.h>
 #include <drivers/screen.h>
 
-static const int VGA_WIDTH = 80;
-static const int VGA_HEIGHT = 25;
+#define TEXT_MODE_SCROLLBACK_ROWS 1000
+#define VGA_WIDTH 80
+#define VGA_HEIGHT 25
 
-static kuint16_t* terminal_buffer;
+static kuint16_t* vga_buffer;
+static char scrollback_buffer[TEXT_MODE_SCROLLBACK_ROWS][VGA_WIDTH];
+static int scrollback_head = 0;
+static int scroll_offset = 0;
 static int terminal_row;
 static int terminal_column;
 static kuint8_t terminal_color;
@@ -21,16 +25,15 @@ static inline kuint16_t vga_entry(unsigned char uc, kuint8_t color) {
 
 void text_mode_putentryat(char c, kuint8_t color, int x, int y) {
 	const int index = y * VGA_WIDTH + x;
-	terminal_buffer[index] = vga_entry(c, color);
+	vga_buffer[index] = vga_entry(c, color);
 }
 
-static void text_mode_maybe_prefix() {
-    if (is_new_line) {
-        text_mode_putentryat('>', terminal_color, terminal_column, terminal_row);
-        terminal_column++;
-        text_mode_putentryat(' ', terminal_color, terminal_column, terminal_row);
-        terminal_column++;
-        is_new_line = false;
+static void text_mode_redraw() {
+    for (int y = 0; y < VGA_HEIGHT; y++) {
+        int scrollback_row = (scrollback_head - scroll_offset - (VGA_HEIGHT - 1) + y + TEXT_MODE_SCROLLBACK_ROWS) % TEXT_MODE_SCROLLBACK_ROWS;
+        for (int x = 0; x < VGA_WIDTH; x++) {
+            text_mode_putentryat(scrollback_buffer[scrollback_row][x], terminal_color, x, y);
+        }
     }
 }
 
@@ -38,13 +41,13 @@ void text_mode_console_init(void) {
 	terminal_row = 0;
 	terminal_column = 0;
 	terminal_color = vga_entry_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK);
-	terminal_buffer = (kuint16_t*) 0xB8000;
-	for (int y = 0; y < VGA_HEIGHT; y++) {
-		for (int x = 0; x < VGA_WIDTH; x++) {
-			const int index = y * VGA_WIDTH + x;
-			terminal_buffer[index] = vga_entry(' ', terminal_color);
-		}
-	}
+	vga_buffer = (kuint16_t*) 0xB8000;
+    for (int i = 0; i < TEXT_MODE_SCROLLBACK_ROWS; i++) {
+        for (int j = 0; j < VGA_WIDTH; j++) {
+            scrollback_buffer[i][j] = ' ';
+        }
+    }
+	text_mode_redraw();
 	is_new_line = true;
 }
 
@@ -53,27 +56,37 @@ void text_mode_setcolor(vga_color_t fg, vga_color_t bg) {
 }
 
 void text_mode_clear(void) {
-    screen_clear((color_t){255, 0, 0, 0});
+    for (int i = 0; i < TEXT_MODE_SCROLLBACK_ROWS; i++) {
+        for (int j = 0; j < VGA_WIDTH; j++) {
+            scrollback_buffer[i][j] = ' ';
+        }
+    }
+    scrollback_head = 0;
+    scroll_offset = 0;
+    text_mode_redraw();
 }
 
 void text_mode_putchar(char c) {
-    text_mode_maybe_prefix();
+    if (is_new_line) {
+        scrollback_buffer[scrollback_head][terminal_column++] = '>';
+        scrollback_buffer[scrollback_head][terminal_column++] = ' ';
+        is_new_line = false;
+    }
+
 	if (c == '\n') {
 		terminal_column = 0;
-		if (++terminal_row == VGA_HEIGHT) {
-			terminal_row = 0;
-		}
+		scrollback_head = (scrollback_head + 1) % TEXT_MODE_SCROLLBACK_ROWS;
         is_new_line = true;
-		return;
-	}
-	text_mode_putentryat(c, terminal_color, terminal_column, terminal_row);
-	if (++terminal_column == VGA_WIDTH) {
-		terminal_column = 0;
-		if (++terminal_row == VGA_HEIGHT) {
-			terminal_row = 0;
+	} else {
+		scrollback_buffer[scrollback_head][terminal_column] = c;
+		if (++terminal_column == VGA_WIDTH) {
+			terminal_column = 0;
+			scrollback_head = (scrollback_head + 1) % TEXT_MODE_SCROLLBACK_ROWS;
+            is_new_line = true;
 		}
-        is_new_line = true;
 	}
+    scroll_offset = 0; // Always show latest input
+    text_mode_redraw();
 }
 
 void text_mode_write(const char* data, int size) {
@@ -87,4 +100,15 @@ void text_mode_writestring(const char* data) {
 	while (data[i] != 0) {
 		text_mode_putchar(data[i++]);
 	}
+}
+
+void text_mode_scroll(int lines) {
+    scroll_offset += lines;
+    if (scroll_offset < 0) {
+        scroll_offset = 0;
+    }
+    if (scroll_offset > scrollback_head) {
+        scroll_offset = scrollback_head;
+    }
+    text_mode_redraw();
 }

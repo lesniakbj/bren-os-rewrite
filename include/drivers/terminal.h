@@ -33,6 +33,7 @@ struct terminal_driver {
     void (*write)(const char* data, int size);
     void (*writestring)(const char* data);
     void (*setcolor)(vga_color_t fg, vga_color_t bg);
+    void (*scroll)(int lines);
 };
 
 void terminal_initialize(multiboot_info_t* mbi);
@@ -41,6 +42,7 @@ void terminal_putchar(char c);
 void terminal_write(const char* data, int size);
 void terminal_writestring(const char* data);
 void terminal_setcolor(vga_color_t fg, vga_color_t bg);
+void terminal_scroll(int lines);
 void terminal_writestringf(const char* format, ...);
 void terminal_write_hex(kuint32_t n);
 

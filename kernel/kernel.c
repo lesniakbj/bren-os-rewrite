@@ -9,13 +9,16 @@
 #include <drivers/screen.h>
 #include <drivers/keyboard.h>
 #include <drivers/mouse.h>
+#include <drivers/keyboard_events.h>
 
 #include <arch/i386/memory.h>
 
+#ifdef DEBUG
 void debug_gdt();
 void debug_pic();
 void debug_idt();
 void debug_multiboot_header(multiboot_info_t *mbi);
+#endif
 
 /* Check if MAGIC is valid and print the Multiboot information structure
    pointed by ADDR. */
@@ -52,23 +55,31 @@ void kernel_main(kuint32_t magic, kuint32_t multiboot_addr) {
 
     /* Initialize the GDT */
     gdt_init();
-    // debug_gdt();
-    // terminal_writestring("\n");
+#ifdef DEBUG
+    debug_gdt();
+    terminal_writestring("\n");
+#endif
 
     /* Remap the PIC */
     pic_remap(0x20, 0x28);
-    // debug_pic();
-    // terminal_writestring("\n");
+#ifdef DEBUG
+    debug_pic();
+    terminal_writestring("\n");
+#endif
 
     /* Initialize the IDT */
     idt_init();
-    // debug_idt();
-    // terminal_writestring("\n");
+#ifdef DEBUG
+    debug_idt();
+    terminal_writestring("\n");
+#endif
 
     /* Initialize the Physical Memory Manager */
-    pmm_init(mbi);
+    pmm_init_status_t status = pmm_init(mbi);
+#ifdef DEBUG
+    debug_pmm(&status);
     terminal_writestring("\n");
-
+#endif
     // TODO: Heap allocation and managment
     // Test allocation
     // void *block = pmm_alloc_block();
@@ -86,6 +97,10 @@ void kernel_main(kuint32_t magic, kuint32_t multiboot_addr) {
     /* Initialize the keyboard */
     keyboard_init();
     register_interrupt_handler(0x21, keyboard_handler);
+    // Drain keyboard buffer of any stale data before enabling interrupts
+    // This prevents old scancodes (like 0xFA ACK) from being processed.
+    inb(0x60); // Read and discard
+    inb(0x60); // Read and discard again, just in case
     terminal_writestring("\n");
 
     /* Initialize the mouse */
@@ -93,19 +108,41 @@ void kernel_main(kuint32_t magic, kuint32_t multiboot_addr) {
     register_interrupt_handler(0x2C, mouse_handler);
     terminal_writestring("\n");
 
+#ifdef DEBUG
     /* Debug multiboot headers */
-    debug_multiboot_header(mbi); // Temporarily commented out for debugging 0x00 interrupt
+    debug_multiboot_header(mbi);
     terminal_writestring("\n");
+#endif
 
     terminal_writestring("Enabling interrupts...\n");
     enable_interrupts();
     terminal_writestring("Interrupts enabled.\n");
 
-    terminal_writestring("Hello World from the terminal!\n");
-    terminal_writestring("\n");
+    // MAIN EVENT LOOP
+    mouse_event_t mouse_event;
+    keyboard_event_t keyboard_event;
+    while(1) {
+        if (keyboard_poll(&keyboard_event)) {
+            if (keyboard_event.type == KEY_PRESS) {
+                if (keyboard_event.special_key == KEY_UP_ARROW) {
+                    terminal_scroll(1);
+                } else if (keyboard_event.special_key == KEY_DOWN_ARROW) {
+                    terminal_scroll(-1);
+                } else if (keyboard_event.ascii) {
+                    terminal_writestringf("ASCII: %d, Scancode: %x\n", keyboard_event.ascii, keyboard_event.scancode);
+                    // terminal_putchar(keyboard_event.ascii);
+                }
+            }
+        }
+
+        if(mouse_poll(&mouse_event)) {
+            terminal_writestringf("Mouse Event: buttons=%x, x=%d, y=%d\n", mouse_event.buttons_pressed, mouse_event.x_delta, mouse_event.y_delta);
+        }
+        asm volatile ("hlt");
+    }
 }
 
-
+#ifdef DEBUG
 void debug_pic() {
     char buf[33];
     terminal_writestring("PIC Remapped.\n");
@@ -330,3 +367,19 @@ void debug_multiboot_header(multiboot_info_t *mbi) {
         }
     }
 }
+
+void debug_pmm(pmm_init_status_t *pmm_status) {
+    if (pmm_status->error) {
+        terminal_writestring("Error: Could not find a suitable location for the memory map!\n");
+        return;
+    }
+
+    terminal_writestringf("Total memory: %d KB (%d blocks)\n", pmm_status->total_memory_kb, pmm_status->max_blocks);
+    terminal_writestringf("Required bitmap size: %d bytes\n", pmm_status->bitmap_size);
+    terminal_writestringf("Kernel ends at: 0x%x\n", pmm_status->kernel_end);
+    terminal_writestringf("Placing bitmap at: 0x%x\n", pmm_status->placement_address);
+    terminal_writestringf("%d blocks used initially.\n", pmm_status->used_blocks);
+}
+
+
+#endif

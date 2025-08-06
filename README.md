@@ -6,6 +6,15 @@ This project is an experimental operating system developed from scratch. It aims
 
 <!-- Images of the OS will go here -->
 
+## Features
+
+*   **Bootloader:** Uses GNU GRUB to boot the kernel.
+*   **Kernel:** A 32-bit kernel written in C.
+*   **Memory Management:** Basic physical memory management.
+*   **Interrupts:** Handles basic hardware interrupts.
+*   **Drivers:** Includes drivers for the keyboard, mouse, and screen.
+*   **Real-Time Clock (RTC):** Reads the current time from the CMOS.
+
 ## Getting Started
 
 To get this project up and running, you'll need a few prerequisites and then follow the build and run steps.
@@ -55,4 +64,4 @@ Welcome, fellow OS enthusiast! This section provides some notes for those lookin
     ```
     (gdb) target remote :1234
     ```
-    (Assuming QEMU is listening on port 1234, which `make debug` typically configures.)
+    (Assuming QEMU is listening on port 1234, which `make debug` typically aconfigures.)

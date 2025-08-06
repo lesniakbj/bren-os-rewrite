@@ -7,9 +7,17 @@
 #define MOUSE_DATA_PORT   0x60
 #define MOUSE_CMD_PORT    0x64
 
+// Mouse event queue size
+#define MOUSE_EVENT_QUEUE_SIZE 16
+
 // State for reading mouse packets
 static kuint8_t mouse_cycle = 0;
 static kint8_t  mouse_packet[3];
+
+// State for managing the read queue
+static mouse_event_t mouse_event_queue[MOUSE_EVENT_QUEUE_SIZE];
+static kuint8_t mouse_queue_head = 0;
+static kuint8_t mouse_queue_tail = 0;
 
 // Waits for the PS/2 controller's input buffer to be empty.
 static void mouse_wait_signal() {
@@ -51,6 +59,27 @@ static kuint8_t mouse_read() {
     return inb(MOUSE_DATA_PORT);
 }
 
+// Add an event to the mouse event queue
+static void mouse_queue_add(mouse_event_t event) {
+    kuint8_t next_head = (mouse_queue_head + 1) % MOUSE_EVENT_QUEUE_SIZE;
+
+    // If queue is full, drop the new event
+    if(next_head != mouse_queue_tail) {
+        mouse_event_queue[mouse_queue_head] = event;
+        mouse_queue_head = next_head;
+    }
+}
+
+int mouse_poll(mouse_event_t* event_out) {
+    if(mouse_queue_head == mouse_queue_tail) {
+        return 0; // Empty
+    }
+
+    *event_out = mouse_event_queue[mouse_queue_tail];
+    mouse_queue_tail = (mouse_queue_tail + 1) % MOUSE_EVENT_QUEUE_SIZE;
+    return 1;
+}
+
 // The interrupt handler for the mouse.
 void mouse_handler(struct registers *regs) {
     // Read the byte from the mouse. This MUST be done to acknowledge
@@ -73,8 +102,12 @@ void mouse_handler(struct registers *regs) {
             break;
         case 2:
             mouse_packet[2] = data;
-            // We have the full packet. Process it.
-            terminal_writestringf("Mouse Packet: buttons=%x, x=%d, y=%d\n", mouse_packet[0], (kint8_t)mouse_packet[1], (kint8_t)mouse_packet[2]);
+            mouse_event_t event = {
+                .buttons_pressed = mouse_packet[0],
+                .x_delta = mouse_packet[1],
+                .y_delta = mouse_packet[2]
+            };
+            mouse_queue_add(event);
             mouse_cycle = 0; // Reset for the next packet.
             break;
     }
@@ -84,8 +117,6 @@ void mouse_handler(struct registers *regs) {
     outb(0xA0, 0x20); // EOI for slave PIC (IRQ 8-15)
     outb(0x20, 0x20); // EOI for master PIC (IRQ 0-7)
 }
-
-
 
 // Initializes the mouse driver.
 void mouse_init(void) {

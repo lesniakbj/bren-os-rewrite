@@ -7,6 +7,7 @@ extern void text_mode_putchar(char c);
 extern void text_mode_write(const char* data, int size);
 extern void text_mode_writestring(const char* data);
 extern void text_mode_setcolor(vga_color_t fg, vga_color_t bg);
+extern void text_mode_scroll(int lines);
 
 extern void framebuffer_console_init(multiboot_info_t* mbi);
 extern void framebuffer_clear(void);
@@ -14,6 +15,7 @@ extern void framebuffer_putchar(char c);
 extern void framebuffer_write(const char* data, int size);
 extern void framebuffer_writestring(const char* data);
 extern void framebuffer_setcolor(vga_color_t fg, vga_color_t bg);
+extern void framebuffer_scroll(int lines);
 
 static struct terminal_driver active_driver;
 
@@ -26,6 +28,7 @@ void terminal_initialize(multiboot_info_t* mbi) {
             active_driver.write = framebuffer_write;
             active_driver.writestring = framebuffer_writestring;
             active_driver.setcolor = framebuffer_setcolor;
+            active_driver.scroll = framebuffer_scroll;
             return;
         }
     }
@@ -36,6 +39,7 @@ void terminal_initialize(multiboot_info_t* mbi) {
     active_driver.write = text_mode_write;
     active_driver.writestring = text_mode_writestring;
     active_driver.setcolor = text_mode_setcolor;
+    active_driver.scroll = text_mode_scroll;
 }
 
 void terminal_clear(void) {
@@ -56,6 +60,10 @@ void terminal_writestring(const char* data) {
 
 void terminal_setcolor(vga_color_t fg, vga_color_t bg) {
     active_driver.setcolor(fg, bg);
+}
+
+void terminal_scroll(int lines) {
+    active_driver.scroll(lines);
 }
 
 void terminal_writestringf(const char* format, ...) {
