@@ -3,6 +3,7 @@
 
 #include <kernel/multiboot.h>
 #include <libc/stdint.h>
+#include <libc/strings.h>
 
 // The size of a single physical memory block (page). 4KB is standard for x86.
 #define PMM_BLOCK_SIZE 4096
@@ -47,5 +48,7 @@ void *pmm_alloc_block();
 // 'p' must be a pointer to the start of a block that was allocated
 // by pmm_alloc_block().
 void pmm_free_block(void *p);
+
+physical_addr_t memsearch(const char *string, physical_addr_t startAddr, physical_addr_t endAddr);
 
 #endif // ARCH_I386_MEMORY_H

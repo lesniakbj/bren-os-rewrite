@@ -1,6 +1,7 @@
 #include <drivers/terminal.h>
 #include <kernel/multiboot.h>
 #include <drivers/screen.h>
+#include <arch/i386/io.h>
 
 #define TEXT_MODE_SCROLLBACK_ROWS 1000
 #define VGA_WIDTH 80
@@ -28,6 +29,15 @@ void text_mode_putentryat(char c, kuint8_t color, int x, int y) {
 	vga_buffer[index] = vga_entry(c, color);
 }
 
+static void text_mode_update_cursor(void) {
+	kuint16_t pos = terminal_row * VGA_WIDTH + terminal_column;
+
+	outb(0x3D4, 0x0F);
+	outb(0x3D5, (kuint8_t) (pos & 0xFF));
+	outb(0x3D4, 0x0E);
+	outb(0x3D5, (kuint8_t) ((pos >> 8) & 0xFF));
+}
+
 static void text_mode_redraw() {
     for (int y = 0; y < VGA_HEIGHT; y++) {
         int scrollback_row = (scrollback_head - scroll_offset - (VGA_HEIGHT - 1) + y + TEXT_MODE_SCROLLBACK_ROWS) % TEXT_MODE_SCROLLBACK_ROWS;
@@ -35,10 +45,11 @@ static void text_mode_redraw() {
             text_mode_putentryat(scrollback_buffer[scrollback_row][x], terminal_color, x, y);
         }
     }
+    text_mode_update_cursor();
 }
 
 void text_mode_console_init(void) {
-	terminal_row = 0;
+	terminal_row = VGA_HEIGHT - 1;
 	terminal_column = 0;
 	terminal_color = vga_entry_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK);
 	vga_buffer = (kuint16_t*) 0xB8000;
@@ -85,6 +96,13 @@ void text_mode_putchar(char c) {
             is_new_line = true;
 		}
 	}
+
+    if (is_new_line) {
+        scrollback_buffer[scrollback_head][terminal_column++] = '>';
+        scrollback_buffer[scrollback_head][terminal_column++] = ' ';
+        is_new_line = false;
+    }
+
     scroll_offset = 0; // Always show latest input
     text_mode_redraw();
 }

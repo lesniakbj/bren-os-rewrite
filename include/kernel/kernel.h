@@ -1,4 +1,5 @@
-#pragma once
+#ifndef KERNEL_H
+#define KERNEL_H
 
 #if defined(__linux__)
 #error "You are not using the correct cross compiler."
@@ -14,3 +15,5 @@
 void kernel_main (kuint32_t magic, kuint32_t addr);
 
 extern void enable_interrupts();
+
+#endif

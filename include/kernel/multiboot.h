@@ -1,4 +1,5 @@
-#pragma once
+#ifndef MULTIBOOT_H
+#define MULTIBOOT_H
 
 /* multiboot.h - Multiboot header file. */
 /* Copyright (C) 1999,2003,2007,2008,2009,2010  Free Software Foundation, Inc.
@@ -277,3 +278,5 @@ struct multiboot_apm_info
 #endif /* ! ASM_FILE */
 
 #endif /* ! MULTIBOOT_HEADER */
+
+#endif

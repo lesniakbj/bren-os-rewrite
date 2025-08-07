@@ -149,3 +149,27 @@ void pmm_free_block(void *p) {
     pmm_clear_bit(frame);
     used_blocks--;
 }
+
+physical_addr_t memsearch(const char *string, physical_addr_t startAddr, physical_addr_t endAddr) {
+    size_t search_len = strlen(string);
+
+    if(startAddr > endAddr || (endAddr - startAddr + 1) < search_len) {
+        return 0;
+    }
+
+    for (physical_addr_t current_addr = startAddr; current_addr <= endAddr - search_len + 1; ++current_addr) {
+        bool found = true;
+        for(size_t i = 0; i < search_len; ++i) {
+            if(*((const char*)current_addr + 1) != string[i]) {
+                found = false;
+                break;
+            }
+        }
+
+        if(found) {
+            return current_addr;
+        }
+    }
+
+    return 0;
+}

@@ -3,17 +3,19 @@ CC = .toolchain/cross/bin/i686-elf-gcc
 AS = .toolchain/cross/bin/i686-elf-as
 
 # Compiler and linker flags
-CFLAGS = -Iinclude -std=gnu99 -ffreestanding -nostdinc -O2 -Wall -Wextra -g -MMD -MP -msoft-float -DDEBUG
+CFLAGS = -Iinclude -std=gnu99 -ffreestanding -nostdinc -O2 -Wall -Wextra -g -MMD -MP -msoft-float #-DDEBUG
 LDFLAGS = -T linker.ld -ffreestanding -O2 -nostdlib -lgcc
 
 # Source files
 C_SOURCES = \
 	kernel/kernel.c \
+	kernel/debug.c \
 	drivers/terminal.c \
 	drivers/screen.c \
 	drivers/keyboard.c \
 	drivers/mouse.c \
 	libc/stdlib.c \
+	libc/strings.c \
 	arch/i386/time.c \
 	arch/i386/memory.c \
 	arch/i386/idt.c \

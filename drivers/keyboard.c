@@ -10,6 +10,62 @@ static keyboard_event_t keyboard_buffer[KEYBOARD_BUFFER_SIZE];
 static kuint8_t keyboard_buffer_head = 0;
 static kuint8_t keyboard_buffer_tail = 0;
 
+static const char scancode_map_set_1[0x59] = {
+    /*0x00*/  0,
+    /*0x01*/  0,   // Escape scanned, no printable char
+    /*0x02*/  '1', /*0x03*/ '2', /*0x04*/ '3', /*0x05*/ '4',
+    /*0x06*/  '5', /*0x07*/ '6', /*0x08*/ '7', /*0x09*/ '8',
+    /*0x0A*/  '9', /*0x0B*/ '0', /*0x0C*/ '-', /*0x0D*/ '=',
+    /*0x0E*/ '\b', /*0x0F*/ '\t',
+    /*0x10*/  'Q', /*0x11*/ 'W', /*0x12*/ 'E', /*0x13*/ 'R',
+    /*0x14*/  'T', /*0x15*/ 'Y', /*0x16*/ 'U', /*0x17*/ 'I',
+    /*0x18*/  'O', /*0x19*/ 'P', /*0x1A*/ '[', /*0x1B*/ ']',
+    /*0x1C*/ '\n',
+    /*0x1D*/  0,   // Left Ctrl
+    /*0x1E*/  'A', /*0x1F*/ 'S', /*0x20*/  'D', /*0x21*/ 'F',
+    /*0x22*/  'G', /*0x23*/ 'H', /*0x24*/  'J', /*0x25*/ 'K', /*0x26*/ 'L',
+    /*0x27*/  ';', /*0x28*/ '\'', /*0x29*/ '`',
+    /*0x2A*/  0,   // Left Shift
+    /*0x2B*/ '\\', /*0x2C*/ 'Z', /*0x2D*/ 'X',
+    /*0x2E*/  'C', /*0x2F*/ 'V', /*0x30*/ 'B', /*0x31*/ 'N',
+    /*0x32*/  'M', /*0x33*/ ',', /*0x34*/ '.', /*0x35*/ '/',
+    /*0x36*/  0,   // Right Shift
+    /*0x37*/  '*', // (keypad) * pressed
+    /*0x38*/  0,   // Left Alt
+    /*0x39*/  ' ', // Spacebar
+    /*0x3A*/  0,   // CAPSLOCK
+    /*0x3B*/  0,   // F1
+    /*0x3C*/  0,   // F2
+    /*0x3D*/  0,   // F3
+    /*0x3E*/  0,   // F4
+    /*0x3F*/  0,   // F5
+    /*0x40*/  0,   // F6
+    /*0x41*/  0,   // F7
+    /*0x42*/  0,   // F8
+    /*0x43*/  0,   // F9
+    /*0x44*/  0,   // F10
+    /*0x45*/  0,   // Num Lock
+    /*0x46*/  0,   // Scroll Lock
+    /*0x47*/  0,   // keypad 7/Home
+    /*0x48*/  0,   // keypad 8/Up
+    /*0x49*/  0,   // keypad 9/PgUp
+    /*0x4A*/  0,   // keypad -
+    /*0x4B*/  0,   // keypad 4/Left
+    /*0x4C*/  0,   // keypad 5
+    /*0x4D*/  0,   // keypad 6/Right
+    /*0x4E*/  0,   // keypad +
+    /*0x4F*/  0,   // keypad 1/End
+    /*0x50*/  0,   // keypad 2/Down
+    /*0x51*/  0,   // keypad 3/PgDn
+    /*0x52*/  0,   // keypad 0/Insert
+    /*0x53*/  0,   // keypad ./Delete
+    /*0x54*/  0,   // keypad .
+    /*0x57*/  0,   // (various international keys)
+    /*0x58*/  0,     // F11
+    /*0x59*/  0     // F12
+};
+
+
 void keyboard_init(void) {
     keyboard_buffer_head = 0;
     keyboard_buffer_tail = 0;
@@ -61,10 +117,14 @@ void keyboard_handler(struct registers *regs) {
         }
         is_extended = false;
     } else {
-        const char* scancode_map = "\x00\x1B""1234567890-=\b\tqwertyuiop[]\n\0asdfghjkl;'`\0\\zxcvbnm,./\0*\0 ";
-        if (scancode < sizeof(scancode_map)) {
-            event.ascii = scancode_map[scancode];
+        size_t size = sizeof(scancode_map_set_1);
+
+        if(event.type == KEY_PRESS && scancode < size) {
+            event.ascii = scancode_map_set_1[scancode];
+        } else if(event.type == KEY_RELEASE && (scancode_map_set_1 - 0x80) < size) {
+            event.ascii = scancode_map_set_1[scancode - 0x80];
         }
+
         if (scancode == 0x01) {
             event.special_key = KEY_ESCAPE;
         }

@@ -1,4 +1,5 @@
-#pragma once
+#ifndef FONT_H
+#define FONT_H
 
 #include <libc/stdint.h>
 
@@ -19,3 +20,5 @@ typedef struct Font {
     kuint8_t               fontSize;
     const char *     fontName;
 } Font;
+
+#endif

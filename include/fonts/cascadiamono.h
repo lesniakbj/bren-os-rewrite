@@ -1,6 +1,5 @@
-// clang-format off
-
-#pragma once
+#ifndef CASCADIAMON_FONT_H
+#define CASCADIAMON_FONT_H
 
 #define CASCADIAMONO_FONT_HEIGHT 18
 #define CASCADIAMONO_MAX_WIDTH 9
@@ -121,4 +120,4 @@ static const Font g_cascadia_mono_font = {
     .fontName = CASCADIAMONO_FONT_NAME,
 };
 
-// clang-format on
+#endif
