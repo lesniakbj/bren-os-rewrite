@@ -11,7 +11,7 @@ static kuint32_t height;
 void screen_init(multiboot_info_t* mbi) {
     bool useFramebuffer = CHECK_MULTIBOOT_FLAG(mbi->flags, 12) && mbi->framebuffer_type == MULTIBOOT_FRAMEBUFFER_TYPE_RGB;
     if(useFramebuffer) {
-        framebuffer = (kuint32_t*)((virtual_addr_t)mbi->framebuffer_addr);
+        framebuffer = (kuint32_t*)((physical_addr_t)mbi->framebuffer_addr);
         pitch = mbi->framebuffer_pitch;
         width = mbi->framebuffer_width;
         height = mbi->framebuffer_height;

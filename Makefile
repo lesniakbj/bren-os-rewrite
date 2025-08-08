@@ -3,14 +3,17 @@ CC = .toolchain/cross/bin/i686-elf-gcc
 AS = .toolchain/cross/bin/i686-elf-as
 
 # Compiler and linker flags
-CFLAGS = -Iinclude -std=gnu99 -ffreestanding -nostdinc -O2 -Wall -Wextra -g -MMD -MP -msoft-float #-DDEBUG
+CFLAGS = -Iinclude -std=gnu99 -ffreestanding -nostdinc -O2 -Wall -Wextra -g -MMD -MP -msoft-float -DDEBUG
 LDFLAGS = -T linker.ld -ffreestanding -O2 -nostdlib -lgcc
 
 # Source files
 C_SOURCES = \
 	kernel/kernel.c \
+	kernel/acpi.c \
 	kernel/debug.c \
 	drivers/terminal.c \
+	drivers/pci.c \
+	drivers/hpet.c \
 	drivers/screen.c \
 	drivers/keyboard.c \
 	drivers/mouse.c \
@@ -91,14 +94,14 @@ clean:
 
 run: $(ISO_FILE)
 	@echo "Running OS in QEMU..."
-	@qemu-system-i386 -cdrom $(ISO_FILE) #-device piix3-usb-uhci,id=usb -device usb-kbd,id=keyboard
+	@qemu-system-i386 -cdrom $(ISO_FILE) -machine q35,hpet=on
 
 debug: $(ISO_FILE)
 	@echo "Running OS in QEMU with GDB support..."
-	@qemu-system-i386 -cdrom $(ISO_FILE) -s -S #-device piix3-usb-uhci,id=usb -device usb-kbd,id=keyboard
+	@qemu-system-i386 -cdrom $(ISO_FILE) -s -S -machine q35,hpet=on
 
 monitor: $(ISO_FILE)
 	@echo "Running OS in QEMU with Monitoring enabled..."
-	@qemu-system-i386 -cdrom $(ISO_FILE) -monitor stdio #-device piix3-usb-uhci,id=usb -device usb-kbd,id=keyboard
+	@qemu-system-i386 -cdrom $(ISO_FILE) -monitor stdio -machine q35,hpet=on #-device piix3-usb-uhci,id=usb -device usb-kbd,id=keyboard -machine hpet=on
 
 .PHONY: all clean run debug

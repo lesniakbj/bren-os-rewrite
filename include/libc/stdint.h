@@ -29,5 +29,6 @@ typedef kuint32_t virtual_addr_t;
 
 // Null pointer
 #define NULL ((void*)0)
+typedef void* generic_ptr;
 
 #endif

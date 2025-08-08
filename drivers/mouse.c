@@ -1,5 +1,4 @@
 #include <drivers/mouse.h>
-#include <drivers/terminal.h>
 #include <libc/stdint.h>
 #include <arch/i386/io.h>
 
@@ -146,6 +145,4 @@ void mouse_init(void) {
     // Step 4: Enable packet streaming from the mouse.
     mouse_write(0xF4);
     mouse_read(); // Acknowledge the command.
-
-    terminal_writestring("Mouse initialized.\n");
 }

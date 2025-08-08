@@ -1,5 +1,6 @@
 #include <kernel/kernel.h>
 #include <kernel/multiboot.h>
+#include <kernel/acpi.h>
 #include <kernel/debug.h>
 #include <arch/i386/idt.h>
 #include <arch/i386/gdt.h>
@@ -7,21 +8,27 @@
 #include <arch/i386/interrupts.h>
 #include <arch/i386/memory.h>
 #include <arch/i386/time.h>
+#include <drivers/pci.h>
+#include <drivers/hpet.h>
 #include <drivers/terminal.h>
 #include <drivers/screen.h>
 #include <drivers/keyboard.h>
 #include <drivers/mouse.h>
 #include <drivers/keyboard_events.h>
 
-void kernel_main(kuint32_t magic, kuint32_t multiboot_addr) {
-    // Init wall time as early as possible
-    CMOS_Time current_time = time_init();
 
+void kernel_main(kuint32_t magic, kuint32_t multiboot_addr) {
     // Set MBI to the address of the Multiboot information structure
     multiboot_info_t *mbi = (multiboot_info_t *) multiboot_addr;
 
     // Init screen early so we can show debug information
     screen_init(mbi);
+
+#ifdef DEBUG
+    // Debug multiboot headers
+    debug_multiboot_header(mbi);
+    terminal_writestring("\n");
+#endif
 
     // Am I booted by a Multiboot-compliant boot loader?
     if(magic != MULTIBOOT_BOOTLOADER_MAGIC) {
@@ -30,14 +37,19 @@ void kernel_main(kuint32_t magic, kuint32_t multiboot_addr) {
         return;
     }
 
-    // Initialization sequence
+    // Main Initialization sequence
+    terminal_writestring("Kernel Initializing...\n");
+
+    // Init wall time as early as possible, we will add updates to this later/use a high res timer for sys time
+    terminal_writestring("Retrieving wall clock time from CMOS...\n");
+    CMOS_Time current_time = time_init();
 #ifdef DEBUG
     debug_time(current_time);
-#endif
-    terminal_writestring("Kernel Initializing...\n");
     terminal_writestring("\n");
+#endif
 
-   // Initialize the GDT
+    // Initialize the GDT
+    terminal_writestring("Installing GDT...\n");
     gdt_init();
 #ifdef DEBUG
     debug_gdt();
@@ -45,6 +57,7 @@ void kernel_main(kuint32_t magic, kuint32_t multiboot_addr) {
 #endif
 
    // Remap the PIC
+    terminal_writestring("Remapping PICs for PS/2 devices...\n");
     pic_remap(0x20, 0x28);
 #ifdef DEBUG
     debug_pic();
@@ -52,6 +65,7 @@ void kernel_main(kuint32_t magic, kuint32_t multiboot_addr) {
 #endif
 
    // Initialize the IDT
+    terminal_writestring("Installing IDT and ISRs...\n");
     idt_init();
 #ifdef DEBUG
     debug_idt();
@@ -59,15 +73,12 @@ void kernel_main(kuint32_t magic, kuint32_t multiboot_addr) {
 #endif
 
     // TODO: Here is where I want to initialize ACPI I believe so I can get sys timers (HPET or PIT for "high res")
-    physical_addr_t acpi_header = memsearch("RSD PTR ", 0xE0000, 0xFFFFF);
-    // EDBA base address
-    kuint32_t base_addr = 0x40E;
-    physical_addr_t acpi_header_2 = memsearch("RSD PTR ", 0xE0000, 0xFFFFF);
-    if(acpi_header == 0) {
-        terminal_writestringf("ACPI Header found! Location: %x\n", acpi_header);
-    }
+    pci_init();
+    acpi_init();
+    hpet_init();
 
    // Initialize the Physical Memory Manager
+    terminal_writestring("Initializing physical memory manager...\n");
     pmm_init_status_t status = pmm_init(mbi);
 #ifdef DEBUG
     debug_pmm(&status);
@@ -87,7 +98,8 @@ void kernel_main(kuint32_t magic, kuint32_t multiboot_addr) {
     // terminal_writestring("\n");
 
 
-   // Initialize the keyboard
+    // Initialize the keyboard
+    terminal_writestring("Initializing keyboard PS/2 device...\n");
     keyboard_init();
     register_interrupt_handler(0x21, keyboard_handler);
     // Drain keyboard buffer of any stale data before enabling interrupts
@@ -97,21 +109,23 @@ void kernel_main(kuint32_t magic, kuint32_t multiboot_addr) {
     terminal_writestring("\n");
 
    // Initialize the mouse
+    terminal_writestring("Initializing mouse PS/2 device...\n");
     mouse_init();
     register_interrupt_handler(0x2C, mouse_handler);
     terminal_writestring("\n");
 
-#ifdef DEBUG
-   // Debug multiboot headers
-    debug_multiboot_header(mbi);
-    terminal_writestring("\n");
-#endif
-
     terminal_writestring("Enabling interrupts...\n");
     enable_interrupts();
-    terminal_writestring("Interrupts enabled.\n");
 
-    // MAIN EVENT LOOP
+    // TODO:
+    //  1) Virtual Mem
+    //  2) Heap
+    //  3) Process model/scheduling
+    //  4) User Mode
+    //  5) User Mode drivers
+    //  6) Window Manager
+
+    // MAIN EVENT REACTION LOOP
     mouse_event_t mouse_event;
     keyboard_event_t keyboard_event;
     while(1) {

@@ -11,7 +11,15 @@ static kuint16_t cursor_x;
 static kuint16_t cursor_y;
 static bool is_new_line = true;
 
+#define SCROLLBACK_BUFFER_SIZE 1000 // Number of lines to keep in scrollback
+
 static color_t current_color;
+
+// Scrollback buffer
+static char scrollback_buffer[SCROLLBACK_BUFFER_SIZE][256];
+static int scrollback_head = 0;
+static int scrollback_tail = 0;
+static int scroll_offset = 0;
 
 void framebuffer_console_init(multiboot_info_t* mbi) {
     if(CHECK_MULTIBOOT_FLAG(mbi->flags, 12)) {
@@ -50,8 +58,13 @@ void framebuffer_putchar(char c) {
     if (framebuffer) {
         if (c == '\n') {
             cursor_x = 0;
-            cursor_y += FONT_HEIGHT; // Assuming a font height of 16
+            cursor_y += FONT_HEIGHT;
             is_new_line = true;
+            scrollback_head = (scrollback_head + 1) % SCROLLBACK_BUFFER_SIZE;
+            if (scrollback_head == scrollback_tail) {
+                scrollback_tail = (scrollback_tail + 1) % SCROLLBACK_BUFFER_SIZE;
+            }
+            memset(scrollback_buffer[scrollback_head], 0, 256);
             return;
         }
 
