@@ -29,7 +29,7 @@ void hpet_init() {
         volatile void* hpet_addr = (volatile void*)hpet_base_address;
 
         kuint64_t caps = hpet_read64(hpet_addr, HPET_GENERAL_CAPS_ID);
-        kuint32_t period_femtoseconds = (kuint32_t)(caps >> 32);
+        kuint32_t period_femtoseconds = (kuint32_t)((kuint64_t)caps >> 32);
         terminal_writestringf("HPET counter period (femtoseconds): %d\n", period_femtoseconds);
 
         if (period_femtoseconds == 0 || period_femtoseconds > 100000000) { // Sanity check the period

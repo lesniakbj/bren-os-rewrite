@@ -1,3 +1,4 @@
+#include <libc/strings.h>
 #include <drivers/terminal.h>
 #include <kernel/multiboot.h>
 #include <drivers/screen.h>
@@ -46,7 +47,6 @@ static void framebuffer_maybe_prefix() {
 }
 
 void framebuffer_clear(void) {
-    color_t reset_color = (color_t){255, 0, 0, 0};
     //screen_clear(reset_color);
 }
 

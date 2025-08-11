@@ -121,7 +121,7 @@ void keyboard_handler(struct registers *regs) {
 
         if(event.type == KEY_PRESS && scancode < size) {
             event.ascii = scancode_map_set_1[scancode];
-        } else if(event.type == KEY_RELEASE && (scancode - 0x80) < size) {
+        } else if(event.type == KEY_RELEASE && (size_t)(scancode - 0x80) < size) {
             event.ascii = scancode_map_set_1[scancode - 0x80];
         }
 

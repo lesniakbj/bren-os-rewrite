@@ -1,4 +1,5 @@
 #include <kernel/acpi.h>
+#include <arch/i386/pmm.h>
 #include <arch/i386/memory.h>
 #include <drivers/terminal.h>
 #include <libc/strings.h>
@@ -19,7 +20,8 @@ void acpi_init() {
     terminal_writestring("ACPI initialization...\n");
 
     // 1. Find RSDP
-    kuint16_t ebda_segment = *(kuint16_t*)0x40E;
+    volatile kuint16_t* ebda_ptr = (volatile kuint16_t*)0x40E;
+    kuint16_t ebda_segment = *ebda_ptr;
     physical_addr_t ebda_addr = (physical_addr_t)ebda_segment << 4;
     rsdp = (rsdp_descriptor_20_t*) memsearch_aligned("RSD PTR ", ebda_addr, ebda_addr + 1024 - 1, 16);
 

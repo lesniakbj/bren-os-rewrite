@@ -1,4 +1,5 @@
 #include <kernel/debug.h>
+#include <arch/i386/pic.h>
 
 #ifdef DEBUG
 void debug_time(CMOS_Time current_time) {

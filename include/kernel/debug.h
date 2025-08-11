@@ -6,7 +6,7 @@
 #include <arch/i386/time.h>
 #include <arch/i386/gdt.h>
 #include <arch/i386/idt.h>
-#include <arch/i386/memory.h>
+#include <arch/i386/pmm.h>
 
 #ifdef DEBUG
 void debug_time(CMOS_Time current_time);

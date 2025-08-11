@@ -21,6 +21,7 @@ C_SOURCES = \
 	libc/strings.c \
 	arch/i386/time.c \
 	arch/i386/memory.c \
+	arch/i386/pmm.c \
 	arch/i386/idt.c \
 	arch/i386/gdt.c \
 	arch/i386/pic.c \

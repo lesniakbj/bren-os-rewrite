@@ -5,13 +5,13 @@
 #define PCI_CONFIG_ADDRESS 0xCF8
 #define PCI_CONFIG_DATA    0xCFC
 
-static kuint32_t pci_read_dword(kuint8_t bus, kuint8_t device, kuint8_t function, kuint8_t offset) {
+static kuint32_t pci_read_dword(kuint8_t bus, kuint8_t device, kuint8_t function, kuint16_t offset) {
     kuint32_t address = (kuint32_t)((bus << 16) | (device << 11) | (function << 8) | (offset & 0xFC) | 0x80000000);
     outl(PCI_CONFIG_ADDRESS, address);
     return inl(PCI_CONFIG_DATA);
 }
 
-static void pci_write_dword(kuint8_t bus, kuint8_t device, kuint8_t function, kuint8_t offset, kuint32_t value) {
+static void pci_write_dword(kuint8_t bus, kuint8_t device, kuint8_t function, kuint16_t offset, kuint32_t value) {
     kuint32_t address = (kuint32_t)((bus << 16) | (device << 11) | (function << 8) | (offset & 0xFC) | 0x80000000);
     outl(PCI_CONFIG_ADDRESS, address);
     outl(PCI_CONFIG_DATA, value);
