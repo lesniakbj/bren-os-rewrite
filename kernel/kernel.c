@@ -48,13 +48,15 @@ void kernel_main(kuint32_t magic, kuint32_t multiboot_addr) {
     hpet_init();
     keyboard_init();
     register_interrupt_handler(0x21, keyboard_handler);
-    mouse_init();
-
-    // ---- Phase 3 ----
     // Drain keyboard buffer of any stale data before enabling interrupts
     // This prevents old scancodes (like 0xFA ACK) from being processed.
     inb(0x60); // Read and discard
     inb(0x60); // Read and discard again, just in case
+    mouse_init();
+    register_interrupt_handler(0x2C, mouse_handler);
+
+    // ---- Phase 3 ----
+
     // Now we're all set up, lets enable interrupts
     enable_interrupts();
 
