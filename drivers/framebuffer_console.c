@@ -25,6 +25,8 @@ static int scroll_offset = 0;
 void framebuffer_console_init(multiboot_info_t* mbi) {
     if(CHECK_MULTIBOOT_FLAG(mbi->flags, 12)) {
         if(mbi->framebuffer_type == MULTIBOOT_FRAMEBUFFER_TYPE_RGB) {
+            // Store the physical address for VMM mapping
+            // After paging is enabled, this will be mapped to the same virtual address
             framebuffer = (kuint32_t*)((virtual_addr_t)mbi->framebuffer_addr);
             pitch = mbi->framebuffer_pitch;
             width = mbi->framebuffer_width;

@@ -63,11 +63,11 @@ ISR_NOERRCODE 36  # IRQ4
 ISR_NOERRCODE 37  # IRQ5
 ISR_NOERRCODE 38  # IRQ6
 ISR_NOERRCODE 39  # IRQ7
-ISR_NOERRCODE 40  # IRQ8
-ISR_NOERRCODE 41  # IRQ9
+ISR_NOERRCODE 40  # IRQ8 (RTC)
+ISR_NOERRCODE 41  # IRQ9 (ACPI System Control Interrupt)
 ISR_NOERRCODE 42  # IRQ10
 ISR_NOERRCODE 43  # IRQ11
-ISR_NOERRCODE 44  # IRQ12
+ISR_NOERRCODE 44  # IRQ12 (Mouse)
 ISR_NOERRCODE 45  # IRQ13
 ISR_NOERRCODE 46  # IRQ14
 ISR_NOERRCODE 47  # IRQ15
@@ -83,7 +83,7 @@ isr_common_stub:
     pusha # Pushes EDI, ESI, EBP, ESP, EBX, EDX, ECX, EAX
 
     # Set up data segments for kernel
-    mov ax, 0x10 # Kernel data segment selector
+    mov ax, 0x10    # Kernel data segment selector
     mov ds, ax
     mov es, ax
     mov fs, ax

@@ -3,6 +3,7 @@
 #include <arch/i386/memory.h>
 #include <drivers/terminal.h>
 #include <libc/strings.h>
+#include <arch/i386/vmm.h>
 
 static rsdp_descriptor_20_t* rsdp = 0;
 static rsdt_t* rsdt = 0;
@@ -40,6 +41,7 @@ void acpi_init() {
     if (rsdp->first_part.revision >= 2) { // ACPI 2.0+
         xsdt = (xsdt_t*)((physical_addr_t)rsdp->xsdt_address);
         terminal_writestringf("XSDT should be at address 0x%x\n", (kuint32_t)xsdt);
+        vmm_identity_map_page((physical_addr_t)xsdt);
         if (!acpi_validate_checksum(&xsdt->header)) {
             terminal_writestring("XSDT checksum is invalid. Aborting.\n");
             xsdt = 0;
@@ -47,6 +49,7 @@ void acpi_init() {
     } else { // ACPI 1.0
         rsdt = (rsdt_t*)((physical_addr_t)rsdp->first_part.rsdt_address);
         terminal_writestringf("RSDT should be at address 0x%x\n", (kuint32_t)rsdt);
+        vmm_identity_map_page((physical_addr_t)rsdt);
         if (!acpi_validate_checksum(&rsdt->header)) {
             terminal_writestring("RSDT checksum is invalid. Aborting.\n");
             rsdt = 0;
@@ -61,6 +64,7 @@ void* acpi_find_table(char* signature) {
         terminal_writestringf("XSDT has %d entries.\n", entries);
         for (int i = 0; i < entries; i++) {
             acpi_sdt_header_t* table = (acpi_sdt_header_t*)((physical_addr_t)xsdt->pointers_to_other_sdt[i]);
+            vmm_identity_map_page((physical_addr_t)table);
             terminal_writestringf("  Entry %d: Signature '%.4s', Address 0x%x\n", i, table->signature, (kuint32_t)table);
             if (strncmp(table->signature, signature, 4) == 0) {
                 if (acpi_validate_checksum(table)) {
@@ -76,6 +80,7 @@ void* acpi_find_table(char* signature) {
         terminal_writestringf("RSDT has %d entries.\n", entries);
         for (int i = 0; i < entries; i++) {
             acpi_sdt_header_t* table = (acpi_sdt_header_t*)((physical_addr_t)rsdt->pointers_to_other_sdt[i]);
+            vmm_identity_map_page((physical_addr_t)table);
             terminal_writestringf("  Entry %d: Signature '%.4s', Address 0x%x\n", i, table->signature, (kuint32_t)table);
             if (strncmp(table->signature, signature, 4) == 0) {
                 if (acpi_validate_checksum(table)) {

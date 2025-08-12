@@ -22,6 +22,7 @@ C_SOURCES = \
 	arch/i386/time.c \
 	arch/i386/memory.c \
 	arch/i386/pmm.c \
+	arch/i386/vmm.c \
 	arch/i386/idt.c \
 	arch/i386/gdt.c \
 	arch/i386/pic.c \
@@ -33,6 +34,7 @@ ASM_SOURCES = \
 	arch/i386/boot.s \
 	arch/i386/gdt_asm.s \
 	arch/i386/idt_asm.s \
+	arch/i386/vmm_asm.s \
 	arch/i386/isr_handlers.s \
 	arch/i386/io_asm.s \
 	arch/i386/interrupts_asm.s

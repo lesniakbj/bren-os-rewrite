@@ -1,6 +1,7 @@
 #include <drivers/hpet.h>
 #include <kernel/acpi.h>
 #include <drivers/terminal.h>
+#include <arch/i386/vmm.h>
 
 static kuint64_t hpet_read64(volatile void* hpet_base, kuint64_t reg) {
     return *((volatile kuint64_t*)((char*)hpet_base + reg));
@@ -25,6 +26,9 @@ void hpet_init() {
 
         physical_addr_t hpet_base_address = (physical_addr_t)hpet_table->base_address.address;
         terminal_writestringf("HPET base address: 0x%x\n", hpet_base_address);
+
+        // Map the HPET's physical memory into the virtual address space.
+        vmm_identity_map_page(hpet_base_address);
 
         volatile void* hpet_addr = (volatile void*)hpet_base_address;
 

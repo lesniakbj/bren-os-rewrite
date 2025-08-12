@@ -6,6 +6,7 @@
 #include <arch/i386/gdt.h>
 #include <arch/i386/pic.h>
 #include <arch/i386/interrupts.h>
+#include <arch/i386/vmm.h>
 #include <arch/i386/pmm.h>
 #include <arch/i386/time.h>
 #include <drivers/pci.h>
@@ -25,8 +26,6 @@ void kernel_main(kuint32_t magic, kuint32_t multiboot_addr) {
     // ---- Phase 1 ----
     // Init master systems, things needed to continue further initialization
     screen_init(mbi);
-    terminal_writestring("Kernel Initializing...\n");
-    // Am I booted by a Multiboot-compliant boot loader?
     if(magic != MULTIBOOT_BOOTLOADER_MAGIC) {
         terminal_writestring("Invalid magic number: 0x");
         terminal_writestring("\n");
@@ -39,6 +38,8 @@ void kernel_main(kuint32_t magic, kuint32_t multiboot_addr) {
 
     // ---- Phase 2 ----
     // Virtual memory management, relies on the GDT/PMM to be initialized
+    vmm_init(mbi);
+    register_interrupt_handler(0x0E, page_fault_handler);
 
     // ---- Phase 3 ----
     // Non-priority subsystems (device discovery, time, etc)
@@ -56,9 +57,16 @@ void kernel_main(kuint32_t magic, kuint32_t multiboot_addr) {
     register_interrupt_handler(0x2C, mouse_handler);
 
     // ---- Phase 3 ----
-
     // Now we're all set up, lets enable interrupts
     enable_interrupts();
+
+    // --- Force a page fault ---
+    vmm_identity_map_page(0x1000000);
+    terminal_writestring("Attempting to force a page fault...\n");
+    kuint32_t *ptr = (kuint32_t*)0x1000000;
+    *ptr = 0; // This should cause a page fault
+    terminal_writestring("This should not be printed.\n");
+    terminal_writestring("\n");
 
     // ---- Phase 4 ----
     // Setup Ring 3 and make the jump to User Mode
@@ -72,17 +80,6 @@ void kernel_main(kuint32_t magic, kuint32_t multiboot_addr) {
     //  6) Window Manager
 
     // TODO: Heap allocation and managment
-    // Test allocation
-    // void *block = pmm_alloc_block();
-    // if (block) {
-    //     terminal_writestringf("Allocated a block at: 0x%x\n", block);
-    //     // And free it
-    //     pmm_free_block(block);
-    //     terminal_writestringf("Freed the block.\n");
-    // } else {
-    //     terminal_writestring("Could not allocate a block.\n");
-    // }
-    // terminal_writestring("\n");
 
 #ifdef DEBUG
     // Debug multiboot headers
