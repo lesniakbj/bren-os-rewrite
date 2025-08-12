@@ -5,6 +5,9 @@
 #include <kernel/multiboot.h>
 #include <arch/i386/interrupts.h>
 
+#define PAGE_SIZE 4096
+#define TABLE_ENTRIES 1024
+
 // Page Directory/Table Entry Flags
 #define PTE_PRESENT     0x01
 #define PTE_READ_WRITE  0x02

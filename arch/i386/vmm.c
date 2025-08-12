@@ -5,9 +5,6 @@
 #include <libc/strings.h>
 #include <libc/stdint.h>
 
-#define PAGE_SIZE 4096
-#define TABLE_ENTRIES 1024
-
 // Pointers to our page directory and a page table
 pde_t* page_directory = 0;
 pte_t* first_page_table = 0;

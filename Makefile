@@ -10,6 +10,7 @@ LDFLAGS = -T linker.ld -ffreestanding -O2 -nostdlib -lgcc
 C_SOURCES = \
 	kernel/kernel.c \
 	kernel/acpi.c \
+	kernel/heap.c \
 	kernel/debug.c \
 	drivers/terminal.c \
 	drivers/pci.c \

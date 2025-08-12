@@ -10,12 +10,12 @@
 - [ ] Implement higher-half kernel support
 
 ## Heap Memory Management
-- [ ] Create heap.c implementation file
-- [ ] Implement heap_init() function
+- [x] Create heap.c implementation file
+- [x] Implement heap_init() function
 - [ ] Implement kmalloc() function
 - [ ] Implement kfree() function
 - [ ] Implement krealloc() function
-- [ ] Design data structures for tracking allocated blocks
+- [x] Design data structures for tracking allocated blocks
 - [ ] Implement different allocation strategies (first-fit, best-fit)
 - [ ] Add memory leak detection (optional for debugging)
 
