@@ -91,7 +91,7 @@ This document outlines all the necessary changes to transition the kernel from l
 
 ### Debug Output
 - [ ] Verify all debug functions work after transition
-- [ ] Ensure `terminal_writestring()` and variants work properly
+- [ ] Ensure `terminal_write_string()` and variants work properly
 - [ ] Test debug output throughout boot process
 
 ## Testing Strategy

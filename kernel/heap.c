@@ -1,7 +1,7 @@
 #include <kernel/heap.h>
+#include <kernel/log.h>
 #include <arch/i386/pmm.h>
 #include <arch/i386/vmm.h>
-#include <drivers/terminal.h>
 #include <libc/strings.h>
 #include <libc/stdint.h>
 
@@ -29,7 +29,7 @@ void heap_init(virtual_addr_t start, size_t size) {
         virtual_addr_t addr = aligned_addr + offset;
         physical_addr_t block = pmm_alloc_block();
         if(!block) {
-            terminal_writestring("HEAP Error: Failed to allocate physical memory for heap\n");
+            LOG_ERR("HEAP Error: Failed to allocate physical memory for heap\n");
             return;
         }
         vmm_map_page(addr, block, (PTE_PRESENT | PTE_READ_WRITE));
@@ -51,13 +51,13 @@ void heap_init(virtual_addr_t start, size_t size) {
     // STEP 6: Store heap_start, heap_virtual_start, and heap_size in global variables
     heap_virtual_start = heap_start;
     heap_size = aligned_size;
-    terminal_writestringf("Heap initialized at 0x%x with size 0x%x\n", heap_virtual_start, heap_size);
+    LOG_INFO("Heap initialized at 0x%x with size 0x%x\n", heap_virtual_start, heap_size);
 }
 
 generic_ptr kmalloc(size_t size) {
     // STEP 1: Check if heap is initialized (heap_start != NULL)
     if(heap_start == NULL) {
-        terminal_writestring("HEAP Error: Heap not initialized, you must initialize the heap before allocating\n");
+        LOG_ERR("HEAP Error: Heap not initialized, you must initialize the heap before allocating\n");
         return NULL;
     }
     
@@ -74,7 +74,7 @@ generic_ptr kmalloc(size_t size) {
     heap_block_t* cur_block = heap_start;
     while (cur_block != NULL) {
         if (cur_block->magic != HEAP_MAGIC) {
-            terminal_writestring("HEAP Error: Heap corruption detected during traversal!\n");
+            LOG_ERR("HEAP Error: Heap corruption detected during traversal!\n");
             return NULL;
         }
 
@@ -92,7 +92,7 @@ generic_ptr kmalloc(size_t size) {
             heap_block_t* cur_block = heap_start;
             while (cur_block != NULL) {
                 if (cur_block->magic != HEAP_MAGIC) {
-                    terminal_writestring("HEAP Error: Heap corruption detected during traversal!\n");
+                    LOG_ERR("HEAP Error: Heap corruption detected during traversal!\n");
                     return NULL;
                 }
 
@@ -102,16 +102,16 @@ generic_ptr kmalloc(size_t size) {
                 cur_block = cur_block->next;
             }
         } else {
-            terminal_writestringf("HEAP Error: No suitable block found and expansion failed for size: %d\n", aligned_size);
+            LOG_ERR("HEAP Error: No suitable block found and expansion failed for size: %d\n", aligned_size);
             return NULL;
         }
-        terminal_writestringf("HEAP Error: No suitable block found for size: %d\n", aligned_size);
+        LOG_ERR("HEAP Error: No suitable block found for size: %d\n", aligned_size);
         return NULL;
     }
 
     // Also return early if the current block doesn't have the correct magic number
     if(cur_block->magic != HEAP_MAGIC) {
-        terminal_writestring("HEAP Error: Block corruption detected!\n");
+        LOG_ERR("HEAP Error: Block corruption detected!\n");
         return NULL;
     }
 
@@ -145,7 +145,7 @@ generic_ptr kmalloc(size_t size) {
 
         // Validate blocks to ensure correct splitting
         if(cur_block->magic != HEAP_MAGIC || new_block->magic != HEAP_MAGIC) {
-            terminal_writestring("HEAP Error: Block corruption detected after split!\n");
+            LOG_ERR("HEAP Error: Block corruption detected after split!\n");
             return NULL;
         }
     }
@@ -169,7 +169,7 @@ void kfree(generic_ptr ptr) {
 
     // STEP 3: Validate the block using magic number
     if (block->magic != HEAP_MAGIC) {
-        terminal_writestring("HEAP Error: Invalid block header in kfree!\n");
+        LOG_ERR("HEAP Error: Invalid block header in kfree!\n");
         return;
     }
 
@@ -221,7 +221,7 @@ generic_ptr krealloc(generic_ptr ptr, size_t size) {
     // STEP 2: Get the block header and validate it
     heap_block_t* block = (heap_block_t*)((virtual_addr_t)ptr - sizeof(heap_block_t));
     if(block->magic != HEAP_MAGIC) {
-        terminal_writestring("HEAP Error: Invalid block header in krealloc!\n");
+        LOG_ERR("HEAP Error: Invalid block header in krealloc!\n");
         return;
     }
     
@@ -266,7 +266,7 @@ bool heap_expand(size_t additional_size) {
         virtual_addr_t addr = current_heap_end + i;
         physical_addr_t block = pmm_alloc_block();
         if(!block) {
-            terminal_writestring("HEAP Error: Failed to allocate physical memory for heap in expansion\n");
+            LOG_ERR("HEAP Error: Failed to allocate physical memory for heap in expansion\n");
             return false;
         }
         vmm_map_page(addr, block, (PTE_PRESENT | PTE_READ_WRITE));

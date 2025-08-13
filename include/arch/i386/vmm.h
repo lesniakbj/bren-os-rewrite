@@ -2,6 +2,7 @@
 #define ARCH_I386_VMM_H
 
 #include <libc/stdint.h>
+#include <libc/strings.h>
 #include <kernel/multiboot.h>
 #include <arch/i386/interrupts.h>
 
@@ -31,13 +32,17 @@
 typedef kuint32_t pte_t;
 typedef kuint32_t pde_t;
 
+typedef struct vmm_init_status {
+    bool is_init;
+} vmm_init_status_t;
+
 /**
  * @brief Initializes the Virtual Memory Manager (VMM).
  * Sets up the initial page directory and page tables for the kernel,
  * identity mapping the first 4MB of memory. Then enables paging.
  * @param mbi The multiboot information structure, used to map framebuffer memory
  */
-void vmm_init(multiboot_info_t* mbi);
+vmm_init_status_t vmm_init(multiboot_info_t* mbi);
 
 /**
  * @brief Maps a 4KB page in the virtual address space to the same physical address.

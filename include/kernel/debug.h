@@ -2,11 +2,12 @@
 #define KERNEL_DEBUG_H
 
 #include <kernel/multiboot.h>
-#include <drivers/terminal.h>
+#include <kernel/log.h>
 #include <arch/i386/time.h>
 #include <arch/i386/gdt.h>
 #include <arch/i386/idt.h>
 #include <arch/i386/pmm.h>
+#include <arch/i386/pic.h>
 
 #ifdef DEBUG
 void debug_time(CMOS_Time current_time);

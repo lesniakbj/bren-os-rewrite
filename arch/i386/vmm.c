@@ -1,9 +1,6 @@
 #include <arch/i386/vmm.h>
 #include <arch/i386/pmm.h>
-#include <arch/i386/interrupts.h> // For registers_t
-#include <drivers/terminal.h>
-#include <libc/strings.h>
-#include <libc/stdint.h>
+#include <kernel/log.h>
 
 // Pointers to our page directory and a page table
 pde_t* page_directory = 0;
@@ -15,8 +12,8 @@ void enable_paging();
 void flush_tlb_single(kuint32_t virtual_addr);
 kuint32_t read_cr2();
 
-void vmm_init(multiboot_info_t* mbi) {
-    terminal_writestring("Setting up VMM...\n");
+vmm_init_status_t vmm_init(multiboot_info_t* mbi) {
+    LOG_DEBUG("Setting up VMM...\n");
 
     // Allocate frames for the page directory and one page table
     // These functions must return the physical address of the allocated frames.
@@ -24,7 +21,7 @@ void vmm_init(multiboot_info_t* mbi) {
     first_page_table = (pte_t*)pmm_alloc_block();
 
     if (!page_directory || !first_page_table) {
-        terminal_writestring("VMM Error: Failed to allocate frames for paging structures.\n");
+        LOG_ERR("VMM Error: Failed to allocate frames for paging structures.\n");
         // This is a fatal error, normally we would halt or panic.
         return;
     }
@@ -49,7 +46,7 @@ void vmm_init(multiboot_info_t* mbi) {
         physical_addr_t framebuffer_size = mbi->framebuffer_height * mbi->framebuffer_pitch;
         physical_addr_t framebuffer_end = framebuffer_start + framebuffer_size;
         
-        terminal_writestringf("Mapping framebuffer: 0x%x - 0x%x\n", framebuffer_start, framebuffer_end);
+        LOG_DEBUG("Mapping framebuffer: 0x%x - 0x%x\n", framebuffer_start, framebuffer_end);
         
         // Map each 4KB page of the framebuffer
         for (physical_addr_t addr = framebuffer_start; addr < framebuffer_end; addr += PAGE_SIZE) {
@@ -63,7 +60,7 @@ void vmm_init(multiboot_info_t* mbi) {
     // Enable paging by setting the PG bit in the CR0 register
     enable_paging();
 
-    terminal_writestring("Paging enabled.\n");
+    LOG_DEBUG("Paging enabled.\n");
 }
 
 void vmm_identity_map_page(kuint32_t physical_addr) {
@@ -78,7 +75,7 @@ void vmm_identity_map_page(kuint32_t physical_addr) {
         // Page table not present, we need to create one
         page_table = (pte_t*)pmm_alloc_block();
         if (!page_table) {
-            terminal_writestring("VMM Error: Out of memory creating new page table!\n");
+            LOG_DEBUG("VMM Error: Out of memory creating new page table!\n");
             return;
         }
         memset(page_table, 0, PAGE_SIZE);
@@ -133,7 +130,7 @@ void vmm_map_page(virtual_addr_t virtual_addr, physical_addr_t physical_addr, ku
         //         e. Set the PDE to point to the new page table with proper flags (PDE_PRESENT, PDE_READ_WRITE)
         page_table = (pte_t*)pmm_alloc_block();
         if(!page_table) {
-            terminal_writestring("VMM Error: Out of memory creating new page table!\n");
+            LOG_ERR("VMM Error: Out of memory creating new page table!\n");
             return;
         }
         memset(page_table, 0, PAGE_SIZE);
@@ -179,7 +176,7 @@ void vmm_unmap_page(virtual_addr_t virtual_addr) {
     //         Check if the PDE has the PDE_PRESENT bit set
     //         If not present, return immediately (nothing to unmap)
     if(!(*page_dir & PDE_PRESENT)) {
-        terminal_writestring("VMM Info: No page found to free, returning.\n");
+        LOG_ERR("VMM Error: No page found to free, returning.\n");
         return;
     }
 
@@ -222,7 +219,7 @@ physical_addr_t vmm_get_physical_addr(virtual_addr_t virtual_addr) {
     //         Check if the PDE has the PDE_PRESENT bit set
     //         If not present, return 0 (invalid address)
     if(!(*page_dir & PDE_PRESENT)) {
-        terminal_writestring("VMM Error: Invalid address!\n");
+        LOG_ERR("VMM Error: Invalid address!\n");
         return 0;
     }
     
@@ -235,7 +232,7 @@ physical_addr_t vmm_get_physical_addr(virtual_addr_t virtual_addr) {
     //         Check if the PTE has the PTE_PRESENT bit set
     //         If not present, return 0 (invalid address)
     if(!(page_table[page_table_idx] & PTE_PRESENT)) {
-        terminal_writestring("VMM Error: Invalid address!\n");
+        LOG_ERR("VMM Error: Invalid address!\n");
         return 0;
     }
 
@@ -258,18 +255,18 @@ void page_fault_handler(struct registers *regs){
     int reserved = regs->error_code & 0x8;
     int id = regs->error_code & 0x10;
 
-    terminal_writestring("--- PAGE FAULT ---\n");
-    terminal_writestringf("Faulting Address: 0x%x\n", faulting_address);
-    terminal_writestringf("Reason: %s, %s, %s, %s, %s\n",
+    LOG_ERR("--- PAGE FAULT ---\n");
+    LOG_ERR("Faulting Address: 0x%x\n", faulting_address);
+    LOG_ERR("Reason: %s, %s, %s, %s, %s\n",
         present ? "Present" : "Not Present",
         rw ? "Write" : "Read",
         us ? "User-mode" : "Kernel-mode",
         reserved ? "Reserved Bit Set" : "",
         id ? "Instruction Fetch" : "");
-    terminal_writestringf("EIP: 0x%x\n", regs->eip);
+    LOG_ERR("EIP: 0x%x\n", regs->eip);
 
     // Halt the system. In a real OS, we might try to recover or kill the process.
-    terminal_writestring("System Halted.\n");
+    LOG_ERR("System Halted.\n");
     for(;;);
 }
 

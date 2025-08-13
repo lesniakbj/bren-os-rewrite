@@ -54,7 +54,7 @@ void terminal_write(const char* data, int size) {
     active_driver.write(data, size);
 }
 
-void terminal_writestring(const char* data) {
+void terminal_write_string(const char* data) {
     active_driver.writestring(data);
 }
 
@@ -66,7 +66,7 @@ void terminal_scroll(int lines) {
     active_driver.scroll(lines);
 }
 
-void terminal_writestringf(const char* format, ...) {
+void terminal_write_stringf(const char* format, ...) {
     va_list args;
     va_start(args, format);
 
@@ -107,11 +107,11 @@ void terminal_writestringf(const char* format, ...) {
     buffer[i] = '\0';
 
     va_end(args);
-    terminal_writestring(buffer);
+    terminal_write_string(buffer);
 }
 
 void terminal_write_hex(kuint32_t n) {
-    terminal_writestring("0x");
+    terminal_write_string("0x");
     char buf[9];
     char* hex_chars = "0123456789ABCDEF";
     buf[8] = '\0';
@@ -119,5 +119,5 @@ void terminal_write_hex(kuint32_t n) {
         buf[i] = hex_chars[n & 0xF];
         n >>= 4;
     }
-    terminal_writestring(buf);
+    terminal_write_string(buf);
 }

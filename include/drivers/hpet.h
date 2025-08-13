@@ -32,6 +32,6 @@ typedef struct {
 #define HPET_TIMER0_CONFIG        0x100
 #define HPET_TIMER0_COMPARATOR    0x108
 
-void hpet_init();
+int hpet_init();
 
 #endif //HPET_H

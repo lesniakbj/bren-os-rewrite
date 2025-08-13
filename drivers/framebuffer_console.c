@@ -40,10 +40,9 @@ void framebuffer_console_init(multiboot_info_t* mbi) {
 
 static void framebuffer_maybe_prefix() {
     if (is_new_line) {
-        screen_draw_char('>', cursor_x, cursor_y, color_to_uint(current_color));
-        cursor_x += FONT_WIDTH;
-        screen_draw_char(' ', cursor_x, cursor_y, color_to_uint(current_color));
-        cursor_x += FONT_WIDTH;
+        // Prefixing with '>' and ' ' has been removed.
+        // If any action is needed at the start of a new line, it can be added here.
+        // For now, we simply unset the flag.
         is_new_line = false;
     }
 }
@@ -68,6 +67,25 @@ void framebuffer_putchar(char c) {
             }
             memset(scrollback_buffer[scrollback_head], 0, 256);
             return;
+        }
+
+        if (c == '\t') {
+            // Define tab width (e.g., 4 or 8 characters)
+            const int TAB_WIDTH = 4; // Or 4, depending on your preference
+            // Calculate how many pixels to advance
+            int tab_stop_pixels = TAB_WIDTH * FONT_WIDTH;
+            // Advance cursor_x to the next tab stop
+            // This calculation ensures it snaps to the nearest tab stop
+            cursor_x = ((cursor_x / tab_stop_pixels) + 1) * tab_stop_pixels;
+
+            // Handle line wrap if the tab pushes the cursor past the screen width
+            if (cursor_x >= (int)width) { // Cast width to int for comparison
+                cursor_x = 0;
+                cursor_y += FONT_HEIGHT;
+                is_new_line = true;
+                // ... (potentially add scrollback logic here too if a line is effectively "added") ...
+            }
+            return; // Important: return after handling tab
         }
 
         screen_draw_char(c, cursor_x, cursor_y, color_to_uint(current_color));

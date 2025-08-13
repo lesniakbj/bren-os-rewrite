@@ -1,5 +1,5 @@
+#include <kernel/log.h>
 #include <drivers/pci.h>
-#include <drivers/terminal.h>
 #include <arch/i386/io.h>
 
 #define PCI_CONFIG_ADDRESS 0xCF8
@@ -177,7 +177,7 @@ const char* pci_class_subclass_to_string(kuint8_t class_code, kuint8_t subclass)
 }
 
 void pci_init() {
-    terminal_writestring("PCI bus scan...\n");
+    LOG_INFO("PCI bus scan...\n");
 
     for (kuint16_t bus = 0; bus < 256; bus++) {
         for (kuint8_t device = 0; device < 32; device++) {
@@ -189,13 +189,13 @@ void pci_init() {
             kuint8_t class_code = pci_get_class_code(bus, device, 0);
             kuint8_t subclass = pci_get_subclass(bus, device, 0);
             const char* class_str = pci_class_subclass_to_string(class_code, subclass);
-            terminal_writestringf("Found PCI device %d:%d - V:0x%x, D:0x%x, %s\n",
+            LOG_INFO("Found PCI device %d:%d - V:0x%x, D:0x%x, %s\n",
                 bus, device, vendor_id, device_id, class_str);
 
             // Check if this is the LPC bridge
             if (class_code == 0x06 && subclass == 0x01) {
-                terminal_writestringf("LPC bridge found (Vendor: 0x%x, Device: 0x%x).\n", vendor_id, device_id);
-                terminal_writestring("Attempting to enable HPET address decoder...\n");
+                LOG_INFO("LPC bridge found (Vendor: 0x%x, Device: 0x%x).\n", vendor_id, device_id);
+                LOG_INFO("Attempting to enable HPET address decoder...\n");
                 
                 #define INTEL_LPC_HPTC_REGISTER 0x104
                 kuint32_t hpet_conf_before = pci_read_dword(bus, device, 0, INTEL_LPC_HPTC_REGISTER);
@@ -205,17 +205,17 @@ void pci_init() {
                 
                 kuint32_t hpet_conf_readback = pci_read_dword(bus, device, 0, INTEL_LPC_HPTC_REGISTER);
 
-                terminal_writestringf("  HPET Config Before: 0x%x\n", hpet_conf_before);
-                terminal_writestringf("  HPET Config After Write: 0x%x\n", hpet_conf_readback);
+                LOG_INFO("\tHPET Config Before: 0x%x\n", hpet_conf_before);
+                LOG_INFO("\tHPET Config After Write: 0x%x\n", hpet_conf_readback);
 
                 if (hpet_conf_readback & (1 << 7)) {
-                    terminal_writestring("  HPET enable bit is set.\n");
+                    LOG_INFO("\tHPET enable bit is set.\n");
                 } else {
-                    terminal_writestring("  Warning: HPET enable bit did not stick. Register may be read-only.\n");
+                    LOG_INFO("\tWarning: HPET enable bit did not stick. Register may be read-only.\n");
                 }
             }
         }
     }
-    terminal_writestring("PCI bus scan complete.\n");
+    LOG_INFO("PCI bus scan complete.\n");
 }
 

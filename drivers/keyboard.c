@@ -1,8 +1,5 @@
 #include <drivers/keyboard.h>
-#include <drivers/keyboard_events.h>
-#include <libc/stdint.h>
 #include <arch/i386/io.h>
-#include <drivers/terminal.h>
 
 #define KEYBOARD_BUFFER_SIZE 256
 

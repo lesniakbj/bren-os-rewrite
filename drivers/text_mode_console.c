@@ -1,4 +1,7 @@
+// drivers/text_mode_console.c
+
 #include <drivers/terminal.h>
+#include <drivers/text_mode_console.h> // Include the new header
 #include <kernel/multiboot.h>
 #include <drivers/screen.h>
 #include <arch/i386/io.h>
@@ -7,7 +10,8 @@
 #define VGA_WIDTH 80
 #define VGA_HEIGHT 25
 
-static kuint16_t* vga_buffer;
+// Make internal variables accessible to functions in this file and others that include the header
+kuint16_t* vga_buffer;
 static char scrollback_buffer[TEXT_MODE_SCROLLBACK_ROWS][VGA_WIDTH];
 static int scrollback_head = 0;
 static int scroll_offset = 0;
@@ -24,7 +28,8 @@ static inline kuint16_t vga_entry(unsigned char uc, kuint8_t color) {
 	return (kuint16_t) uc | (kuint16_t) color << 8;
 }
 
-void text_mode_putentryat(char c, kuint8_t color, int x, int y) {
+// Make putentryat static as it's only used internally
+static void text_mode_putentryat(char c, kuint8_t color, int x, int y) {
 	const int index = y * VGA_WIDTH + x;
 	vga_buffer[index] = vga_entry(c, color);
 }
@@ -78,33 +83,51 @@ void text_mode_clear(void) {
 }
 
 void text_mode_putchar(char c) {
-    if (is_new_line) {
-        scrollback_buffer[scrollback_head][terminal_column++] = '>';
-        scrollback_buffer[scrollback_head][terminal_column++] = ' ';
-        is_new_line = false;
+    // --- Process the Character ---
+    if (c == '\t') {
+        const int TAB_WIDTH = 4; // Define your desired tab width
+
+        // Calculate the column of the next tab stop based on the absolute column
+        // This ensures alignment to global tab stops (e.g., columns 0, 8, 16, 24, ...)
+        int next_tab_stop = ((terminal_column / TAB_WIDTH) + 1) * TAB_WIDTH;
+
+        // Fill with spaces up to the next tab stop, but do not exceed line width
+        while (terminal_column < next_tab_stop && terminal_column < VGA_WIDTH) {
+            scrollback_buffer[scrollback_head][terminal_column] = ' ';
+            terminal_column++;
+        }
+
+        // Check for line wrap after filling spaces
+        if (terminal_column >= VGA_WIDTH) {
+            terminal_column = 0;
+            scrollback_head = (scrollback_head + 1) % TEXT_MODE_SCROLLBACK_ROWS;
+            is_new_line = true; // Next char will be at the start of a new line
+        }
+
+    } else if (c == '\n') {
+        // Handle newline: Move to start of next line
+        terminal_column = 0;
+        scrollback_head = (scrollback_head + 1) % TEXT_MODE_SCROLLBACK_ROWS;
+        is_new_line = true; // Next char will be at the start of a new line
+
+    } else {
+        // Handle regular character
+        scrollback_buffer[scrollback_head][terminal_column] = c;
+        terminal_column++;
+
+        // Check for line wrap after placing the character
+        if (terminal_column >= VGA_WIDTH) {
+            terminal_column = 0;
+            scrollback_head = (scrollback_head + 1) % TEXT_MODE_SCROLLBACK_ROWS;
+            is_new_line = true; // Next char will be at the start of a new line
+        }
     }
+    // --- End of Character Processing ---
 
-	if (c == '\n') {
-		terminal_column = 0;
-		scrollback_head = (scrollback_head + 1) % TEXT_MODE_SCROLLBACK_ROWS;
-        is_new_line = true;
-	} else {
-		scrollback_buffer[scrollback_head][terminal_column] = c;
-		if (++terminal_column == VGA_WIDTH) {
-			terminal_column = 0;
-			scrollback_head = (scrollback_head + 1) % TEXT_MODE_SCROLLBACK_ROWS;
-            is_new_line = true;
-		}
-	}
-
-    if (is_new_line) {
-        scrollback_buffer[scrollback_head][terminal_column++] = '>';
-        scrollback_buffer[scrollback_head][terminal_column++] = ' ';
-        is_new_line = false;
-    }
-
-    scroll_offset = 0; // Always show latest input
-    text_mode_redraw();
+    // --- Update Display ---
+    scroll_offset = 0; // Always show the latest output
+    text_mode_redraw(); // Refresh the VGA buffer
+    // --- End of Display Update ---
 }
 
 void text_mode_write(const char* data, int size) {
@@ -130,3 +153,34 @@ void text_mode_scroll(int lines) {
     }
     text_mode_redraw();
 }
+
+
+// --- NEW FUNCTION ---
+void text_mode_write_at(int row, int col, const char* str, int len, kuint8_t color) {
+    // Validate row and column
+    if (row < 0 || row >= VGA_HEIGHT || col < 0 || col >= VGA_WIDTH) {
+        return; // Invalid coordinates
+    }
+
+    // Determine the actual number of characters to write
+    int chars_to_write = 0;
+    if (len < 0) {
+        // Write until null terminator or end of line
+        chars_to_write = 0;
+        while (str[chars_to_write] != '\0' && (col + chars_to_write) < VGA_WIDTH) {
+            chars_to_write++;
+        }
+    } else {
+        // Write up to 'len' characters or end of line, whichever comes first
+        chars_to_write = (len < (VGA_WIDTH - col)) ? len : (VGA_WIDTH - col);
+    }
+
+    // Write characters directly to the VGA buffer
+    for (int i = 0; i < chars_to_write; i++) {
+        // Use the helper function to create the VGA entry
+        vga_buffer[row * VGA_WIDTH + col + i] = vga_entry(str[i], color);
+    }
+    // Note: This does not update the hardware cursor or the scrollback buffer.
+    // It directly modifies the visible screen content.
+}
+// --- END NEW FUNCTION ---

@@ -3,7 +3,6 @@
 
 #include <libc/stdint.h>
 
-// TODO: Verify the common ISR handler is being called with these parameters in this order
 struct registers {
     kuint32_t gs, fs, es, ds;
     kuint32_t edi, esi, ebp, esp, ebx, edx, ecx, eax;

@@ -1,6 +1,7 @@
 #ifndef DRIVERS_MOUSE_H
 #define DRIVERS_MOUSE_H
 
+#include <libc/stdint.h>
 #include <arch/i386/interrupts.h>
 
 typedef struct {

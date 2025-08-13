@@ -38,7 +38,7 @@ void pic_remap(kuint32_t offset1, kuint32_t offset2) {
     io_wait();
 
     // Unmask IRQ1 (keyboard) and IRQ12 (mouse)
-    outb(PIC1_DATA, 0xF9); // 1111 1101b: Unmask IRQ1 (keyboard)
+    outb(PIC1_DATA, 0xF8); // 1111 1101b: Unmask IRQ1 (timer/keyboard/slave)
     io_wait();
     outb(PIC2_DATA, 0xEF); // 1110 1111b: Unmask IRQ12 (mouse)
     io_wait();

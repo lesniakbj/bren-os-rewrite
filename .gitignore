@@ -3,6 +3,18 @@
 *.bin
 *.o
 *.d
+*.ko
+*.obj
+*.elf
+*.ilk
+*.map
+*.exp
+*.exe
+*.out
+*.app
+*.i*86
+*.x86_64
+*.hex
 
 # Toolchain
 *.tar.gz

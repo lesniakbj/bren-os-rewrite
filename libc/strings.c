@@ -46,3 +46,27 @@ int strncmp(const char *s1, const char *s2, size_t n) {
     // the strings are equal up to n characters or a null terminator
     return 0;
 }
+
+char* strrchr(const char* str, int c) {
+    char* last_occurrence = NULL;
+    // Cast c to unsigned char to match standard behavior for comparison
+    unsigned char target = (unsigned char)c;
+
+    // Iterate through the string
+    while (*str != '\0') {
+        if (*str == target) {
+            last_occurrence = (char*)str; // Keep track of the last found position
+        }
+        str++;
+    }
+
+    // Check if the null terminator itself matches (c == '\0')
+    // This is part of the standard behavior.
+    if (target == '\0') {
+         // The end of the string is the last occurrence of '\0'
+        return (char*)str;
+    }
+
+    // Return the pointer to the last occurrence found, or NULL if not found
+    return last_occurrence;
+}

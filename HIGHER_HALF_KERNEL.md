@@ -163,14 +163,14 @@ Modify your `vmm_init()` function to work with the higher-half kernel:
 
 ```c
 void vmm_init() {
-    terminal_writestring("Setting up VMM...\n");
+    terminal_write_string("Setting up VMM...\n");
 
     // Allocate frames for the page directory and one page table
     page_directory = (pde_t*)pmm_alloc_block();
     first_page_table = (pte_t*)pmm_alloc_block();
 
     if (!page_directory || !first_page_table) {
-        terminal_writestring("VMM Error: Failed to allocate frames for paging structures.\n");
+        terminal_write_string("VMM Error: Failed to allocate frames for paging structures.\n");
         return;
     }
 
@@ -202,7 +202,7 @@ void vmm_init() {
         if (!(page_directory[pde_index] & PDE_PRESENT)) {
             pte_t* new_page_table = (pte_t*)pmm_alloc_block();
             if (!new_page_table) {
-                terminal_writestring("VMM Error: Failed to allocate page table!\n");
+                terminal_write_string("VMM Error: Failed to allocate page table!\n");
                 return;
             }
             memset(new_page_table, 0, PAGE_SIZE);
@@ -220,7 +220,7 @@ void vmm_init() {
     load_page_directory(page_directory);
     enable_paging();
 
-    terminal_writestring("Paging enabled.\n");
+    terminal_write_string("Paging enabled.\n");
 }
 ```
 

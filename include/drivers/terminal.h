@@ -40,10 +40,10 @@ void terminal_initialize(multiboot_info_t* mbi);
 void terminal_clear(void);
 void terminal_putchar(char c);
 void terminal_write(const char* data, int size);
-void terminal_writestring(const char* data);
+void terminal_write_string(const char* data);
 void terminal_setcolor(vga_color_t fg, vga_color_t bg);
 void terminal_scroll(int lines);
-void terminal_writestringf(const char* format, ...);
+void terminal_write_stringf(const char* format, ...);
 void terminal_write_hex(kuint32_t n);
 
 void text_mode_console_init(void);

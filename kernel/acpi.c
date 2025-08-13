@@ -1,9 +1,8 @@
 #include <kernel/acpi.h>
+#include <kernel/log.h>
 #include <arch/i386/pmm.h>
-#include <arch/i386/memory.h>
-#include <drivers/terminal.h>
-#include <libc/strings.h>
 #include <arch/i386/vmm.h>
+#include <arch/i386/memory.h>
 
 static rsdp_descriptor_20_t* rsdp = 0;
 static rsdt_t* rsdt = 0;
@@ -18,7 +17,7 @@ static bool acpi_validate_checksum(acpi_sdt_header_t* table_header) {
 }
 
 void acpi_init() {
-    terminal_writestring("ACPI initialization...\n");
+    LOG_INFO("ACPI initialization...\n");
 
     // 1. Find RSDP
     volatile kuint16_t* ebda_ptr = (volatile kuint16_t*)0x40E;
@@ -31,68 +30,67 @@ void acpi_init() {
     }
 
     if (rsdp == 0) {
-        terminal_writestring("ACPI RSDP not found.\n");
+        LOG_ERR("ACPI RSDP not found.\n");
         return;
     }
 
-    terminal_writestringf("ACPI RSDP found at 0x%x, revision %d\n", (kuint32_t)rsdp, rsdp->first_part.revision);
+    LOG_INFO("ACPI RSDP found at 0x%x, revision %d\n", (kuint32_t)rsdp, rsdp->first_part.revision);
 
     // 2. Check ACPI Version and get the root table
     if (rsdp->first_part.revision >= 2) { // ACPI 2.0+
         xsdt = (xsdt_t*)((physical_addr_t)rsdp->xsdt_address);
-        terminal_writestringf("XSDT should be at address 0x%x\n", (kuint32_t)xsdt);
+        LOG_INFO("XSDT should be at address 0x%x\n", (kuint32_t)xsdt);
         vmm_identity_map_page((physical_addr_t)xsdt);
         if (!acpi_validate_checksum(&xsdt->header)) {
-            terminal_writestring("XSDT checksum is invalid. Aborting.\n");
+            LOG_ERR("XSDT checksum is invalid. Aborting.\n");
             xsdt = 0;
         }
     } else { // ACPI 1.0
         rsdt = (rsdt_t*)((physical_addr_t)rsdp->first_part.rsdt_address);
-        terminal_writestringf("RSDT should be at address 0x%x\n", (kuint32_t)rsdt);
+        LOG_INFO("RSDT should be at address 0x%x\n", (kuint32_t)rsdt);
         vmm_identity_map_page((physical_addr_t)rsdt);
         if (!acpi_validate_checksum(&rsdt->header)) {
-            terminal_writestring("RSDT checksum is invalid. Aborting.\n");
+            LOG_ERR("RSDT checksum is invalid. Aborting.\n");
             rsdt = 0;
         }
     }
 }
 
 void* acpi_find_table(char* signature) {
-    terminal_writestringf("Searching for ACPI table with signature: %s\n", signature);
+    LOG_INFO("Searching for ACPI table with signature: %s\n", signature);
     if (xsdt != 0) { // Use XSDT if available (ACPI 2.0+)
         int entries = (xsdt->header.length - sizeof(acpi_sdt_header_t)) / 8;
-        terminal_writestringf("XSDT has %d entries.\n", entries);
+        LOG_INFO("XSDT has %d entries.\n", entries);
         for (int i = 0; i < entries; i++) {
             acpi_sdt_header_t* table = (acpi_sdt_header_t*)((physical_addr_t)xsdt->pointers_to_other_sdt[i]);
             vmm_identity_map_page((physical_addr_t)table);
-            terminal_writestringf("  Entry %d: Signature '%.4s', Address 0x%x\n", i, table->signature, (kuint32_t)table);
+            LOG_INFO("\tEntry %d: Signature '%.4s', Address 0x%x\n", i, table->signature, (kuint32_t)table);
             if (strncmp(table->signature, signature, 4) == 0) {
                 if (acpi_validate_checksum(table)) {
-                    terminal_writestringf("Found valid table %s at 0x%x\n", signature, (kuint32_t)table);
+                    LOG_INFO("Found valid table %s at 0x%x\n", signature, (kuint32_t)table);
                     return table;
                 } else {
-                    terminal_writestringf("Found table %s, but checksum is invalid.\n", signature);
+                    LOG_ERR("Found table %s, but checksum is invalid.\n", signature);
                 }
             }
         }
     } else if (rsdt != 0) { // Fallback to RSDT for ACPI 1.0
         int entries = (rsdt->header.length - sizeof(acpi_sdt_header_t)) / 4;
-        terminal_writestringf("RSDT has %d entries.\n", entries);
+        LOG_INFO("RSDT has %d entries.\n", entries);
         for (int i = 0; i < entries; i++) {
             acpi_sdt_header_t* table = (acpi_sdt_header_t*)((physical_addr_t)rsdt->pointers_to_other_sdt[i]);
             vmm_identity_map_page((physical_addr_t)table);
-            terminal_writestringf("  Entry %d: Signature '%.4s', Address 0x%x\n", i, table->signature, (kuint32_t)table);
+            LOG_INFO("\tEntry %d: Signature '%.4s', Address 0x%x\n", i, table->signature, (kuint32_t)table);
             if (strncmp(table->signature, signature, 4) == 0) {
                 if (acpi_validate_checksum(table)) {
-                    terminal_writestringf("Found valid table %s at 0x%x\n", signature, (kuint32_t)table);
+                    LOG_INFO("Found valid table %s at 0x%x\n", signature, (kuint32_t)table);
                     return table;
                 } else {
-                    terminal_writestringf("Found table %s, but checksum is invalid.\n", signature);
+                    LOG_ERR("Found table %s, but checksum is invalid.\n", signature);
                 }
             }
         }
     }
 
-    terminal_writestringf("Table %s not found.\n", signature);
-    return 0;
+    LOG_INFO("Table %s not found.\n", signature);
  }

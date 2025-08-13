@@ -11,11 +11,17 @@ C_SOURCES = \
 	kernel/kernel.c \
 	kernel/acpi.c \
 	kernel/heap.c \
+	kernel/proc.c \
+	kernel/time.c \
+	kernel/log.c \
 	kernel/debug.c \
+	libk/udivdi3.c \
 	drivers/terminal.c \
 	drivers/pci.c \
 	drivers/hpet.c \
+	drivers/pit.c \
 	drivers/screen.c \
+	drivers/serial.c \
 	drivers/keyboard.c \
 	drivers/mouse.c \
 	libc/stdlib.c \
@@ -98,14 +104,14 @@ clean:
 
 run: $(ISO_FILE)
 	@echo "Running OS in QEMU..."
-	@qemu-system-i386 -cdrom $(ISO_FILE) -machine q35,hpet=on
+	@qemu-system-i386 -cdrom $(ISO_FILE) -serial stdio -machine q35,hpet=on
 
 debug: $(ISO_FILE)
 	@echo "Running OS in QEMU with GDB support..."
-	@qemu-system-i386 -cdrom $(ISO_FILE) -s -S -machine q35,hpet=on
+	@qemu-system-i386 -cdrom $(ISO_FILE) -s -S -serial stdio -machine q35,hpet=on
 
 monitor: $(ISO_FILE)
 	@echo "Running OS in QEMU with Monitoring enabled..."
-	@qemu-system-i386 -cdrom $(ISO_FILE) -monitor stdio -machine q35,hpet=on #-device piix3-usb-uhci,id=usb -device usb-kbd,id=keyboard -machine hpet=on
+	@qemu-system-i386 -cdrom $(ISO_FILE) -monitor stdio -serial stdio -machine q35,hpet=on #-device piix3-usb-uhci,id=usb -device usb-kbd,id=keyboard -machine hpet=on
 
 .PHONY: all clean run debug
