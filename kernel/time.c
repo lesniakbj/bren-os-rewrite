@@ -13,6 +13,11 @@ static kuint64_t base_unix_timestamp = 0;
 // Flag to check if system time is initialized
 static int system_time_initialized = 0;
 
+// --- Add these definitions ---
+char console_time_buffer[32] = "Initializing...";
+kuint8_t console_clock_color = 0x0F; // White on black
+// ---
+
 /**
  * @brief Initializes the system time based on the initial CMOS read.
  *
@@ -262,12 +267,7 @@ void update_console_clock() {
     
     time_buffer[idx] = '\0'; // Null terminate
 
-    // --- Write the formatted time string directly to the screen ---
-    // Target position: Row 0 (top line), Column 60
-    // Use a distinct color for the clock, e.g., Light Cyan on Black
-    kuint8_t clock_color = 11 | (0 << 4);
-    
-    // Use the new function to write directly to the VGA buffer
-    text_mode_write_at(0, 57, time_buffer, -1, clock_color);
-    // The -1 tells it to write the entire null-terminated string.
+    // --- Update the shared buffer and color instead of writing to screen ---
+    strcpy(console_time_buffer, time_buffer);
+    console_clock_color = 11 | (0 << 4); // Light Cyan on Black
 }

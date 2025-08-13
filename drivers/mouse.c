@@ -1,5 +1,3 @@
-// drivers/mouse.c
-
 #include <drivers/mouse.h>
 #include <arch/i386/io.h>
 #include <kernel/log.h> // Add this for LOG_INFO/LOG_ERR
@@ -87,12 +85,10 @@ int mouse_poll(mouse_event_t* event_out) {
 
 // The interrupt handler for the mouse.
 void mouse_handler(struct registers *regs) {
-    LOG_INFO("Mouse IRQ\n"); // Add this for basic interrupt confirmation
 
     // Read the byte from the mouse. This MUST be done to acknowledge
     // the interrupt to the PS/2 controller.
     kuint8_t data = inb(MOUSE_DATA_PORT);
-    LOG_INFO("Mouse data: 0x%x\n", data); // Log raw data byte
 
     // This is a state machine to read the 3-byte mouse packet.
     switch(mouse_cycle) {
@@ -130,10 +126,8 @@ void mouse_handler(struct registers *regs) {
 
 // Initializes the mouse driver.
 void mouse_init(void) {
-    LOG_INFO("Initializing PS/2 Mouse...\n");
 
     // Step 1: Enable the auxiliary device (the mouse).
-    LOG_INFO("  Enabling auxiliary device...\n");
     mouse_wait_signal();
     outb(MOUSE_CMD_PORT, 0xA8);
 
@@ -142,12 +136,10 @@ void mouse_init(void) {
     // Step 2: Enable interrupts from the mouse.
     // We do this by getting the PS/2 controller's "Compaq Status Byte"
     // and setting the IRQ12 enable bit (bit 1).
-    LOG_INFO("  Enabling mouse interrupts...\n");
     mouse_wait_signal();
     outb(MOUSE_CMD_PORT, 0x20); // Command to get status byte.
     mouse_wait_data();
     kuint8_t status = inb(MOUSE_DATA_PORT);
-    LOG_INFO("  PS/2 Status Byte before: 0x%x\n", status);
     status |= 0x02;  // Set bit 1 to enable IRQ12.
     status &= ~0x20; // Clear bit 5, which disables the mouse clock.
                      // This is important for some controllers.
@@ -160,27 +152,18 @@ void mouse_init(void) {
     outb(MOUSE_CMD_PORT, 0x20); // Command to get status byte again.
     mouse_wait_data();
     kuint8_t status_after = inb(MOUSE_DATA_PORT);
-    LOG_INFO("  PS/2 Status Byte after: 0x%x\n", status_after);
 
     // Step 3: Tell the mouse to use default settings.
-    LOG_INFO("  Sending mouse reset command (0xF6)...\n");
     mouse_write(0xF6);
     kuint8_t ack1 = mouse_read(); // Acknowledge the command.
-    LOG_INFO("  Mouse ACK for 0xF6: 0x%x (expected 0xFA)\n", ack1);
     if (ack1 != 0xFA) {
-        LOG_ERR("  Mouse failed to acknowledge 0xF6 command\n");
         // Consider returning or handling the error
     }
 
     // Step 4: Enable packet streaming from the mouse.
-    LOG_INFO("  Enabling mouse data reporting (0xF4)...\n");
     mouse_write(0xF4);
     kuint8_t ack2 = mouse_read(); // Acknowledge the command.
-    LOG_INFO("  Mouse ACK for 0xF4: 0x%x (expected 0xFA)\n", ack2);
     if (ack2 != 0xFA) {
-        LOG_ERR("  Mouse failed to acknowledge 0xF4 command\n");
         // Consider returning or handling the error
     }
-    
-    LOG_INFO("PS/2 Mouse initialization complete.\n");
 }

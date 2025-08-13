@@ -5,6 +5,8 @@
 #include <kernel/multiboot.h>
 #include <drivers/screen.h>
 #include <arch/i386/io.h>
+#include <kernel/time.h>
+#include <libc/strings.h>
 
 #define TEXT_MODE_SCROLLBACK_ROWS 1000
 #define VGA_WIDTH 80
@@ -12,6 +14,7 @@
 
 // Make internal variables accessible to functions in this file and others that include the header
 kuint16_t* vga_buffer;
+static kuint16_t back_buffer[VGA_WIDTH * VGA_HEIGHT];
 static char scrollback_buffer[TEXT_MODE_SCROLLBACK_ROWS][VGA_WIDTH];
 static int scrollback_head = 0;
 static int scroll_offset = 0;
@@ -28,12 +31,6 @@ static inline kuint16_t vga_entry(unsigned char uc, kuint8_t color) {
 	return (kuint16_t) uc | (kuint16_t) color << 8;
 }
 
-// Make putentryat static as it's only used internally
-static void text_mode_putentryat(char c, kuint8_t color, int x, int y) {
-	const int index = y * VGA_WIDTH + x;
-	vga_buffer[index] = vga_entry(c, color);
-}
-
 static void text_mode_update_cursor(void) {
 	kuint16_t pos = terminal_row * VGA_WIDTH + terminal_column;
 
@@ -43,13 +40,34 @@ static void text_mode_update_cursor(void) {
 	outb(0x3D5, (kuint8_t) ((pos >> 8) & 0xFF));
 }
 
-static void text_mode_redraw() {
+void text_mode_console_refresh(void) {
+    // 1. Draw scrollback content to back_buffer
     for (int y = 0; y < VGA_HEIGHT; y++) {
         int scrollback_row = (scrollback_head - scroll_offset - (VGA_HEIGHT - 1) + y + TEXT_MODE_SCROLLBACK_ROWS) % TEXT_MODE_SCROLLBACK_ROWS;
         for (int x = 0; x < VGA_WIDTH; x++) {
-            text_mode_putentryat(scrollback_buffer[scrollback_row][x], terminal_color, x, y);
+            const int index = y * VGA_WIDTH + x;
+            back_buffer[index] = vga_entry(scrollback_buffer[scrollback_row][x], terminal_color);
         }
     }
+
+    // 2. Draw clock on top of back_buffer
+    int clock_len = strlen(console_time_buffer);
+    int clock_start_col = 57;
+    for (int i = 0; i < clock_len; i++) {
+        if (clock_start_col + i < VGA_WIDTH) {
+            const int index = 0 * VGA_WIDTH + (clock_start_col + i);
+            back_buffer[index] = vga_entry(console_time_buffer[i], console_clock_color);
+        }
+    }
+
+    // 3. Copy only changed parts from back_buffer to vga_buffer
+    for (int i = 0; i < VGA_WIDTH * VGA_HEIGHT; i++) {
+        if (back_buffer[i] != vga_buffer[i]) {
+            vga_buffer[i] = back_buffer[i];
+        }
+    }
+
+    // 4. Update cursor
     text_mode_update_cursor();
 }
 
@@ -63,7 +81,10 @@ void text_mode_console_init(void) {
             scrollback_buffer[i][j] = ' ';
         }
     }
-	text_mode_redraw();
+    for (int i = 0; i < VGA_WIDTH * VGA_HEIGHT; i++) {
+        back_buffer[i] = vga_entry(' ', terminal_color);
+    }
+	text_mode_console_refresh();
 	is_new_line = true;
 }
 
@@ -79,7 +100,7 @@ void text_mode_clear(void) {
     }
     scrollback_head = 0;
     scroll_offset = 0;
-    text_mode_redraw();
+    text_mode_console_refresh();
 }
 
 void text_mode_putchar(char c) {
@@ -126,7 +147,7 @@ void text_mode_putchar(char c) {
 
     // --- Update Display ---
     scroll_offset = 0; // Always show the latest output
-    text_mode_redraw(); // Refresh the VGA buffer
+    text_mode_console_refresh(); // Refresh the VGA buffer
     // --- End of Display Update ---
 }
 
@@ -151,7 +172,7 @@ void text_mode_scroll(int lines) {
     if (scroll_offset > scrollback_head) {
         scroll_offset = scrollback_head;
     }
-    text_mode_redraw();
+    text_mode_console_refresh();
 }
 
 
@@ -175,12 +196,12 @@ void text_mode_write_at(int row, int col, const char* str, int len, kuint8_t col
         chars_to_write = (len < (VGA_WIDTH - col)) ? len : (VGA_WIDTH - col);
     }
 
-    // Write characters directly to the VGA buffer
+    // Write characters directly to both buffers to maintain sync
     for (int i = 0; i < chars_to_write; i++) {
-        // Use the helper function to create the VGA entry
-        vga_buffer[row * VGA_WIDTH + col + i] = vga_entry(str[i], color);
+        kuint16_t entry = vga_entry(str[i], color);
+        int index = row * VGA_WIDTH + col + i;
+        vga_buffer[index] = entry;
+        back_buffer[index] = entry;
     }
-    // Note: This does not update the hardware cursor or the scrollback buffer.
-    // It directly modifies the visible screen content.
 }
 // --- END NEW FUNCTION ---

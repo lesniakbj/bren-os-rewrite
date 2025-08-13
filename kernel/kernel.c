@@ -19,6 +19,7 @@
 #include <drivers/keyboard.h>
 #include <drivers/mouse.h>
 #include <drivers/keyboard_events.h>
+#include <drivers/text_mode_console.h>
 
 void test_heap_allocations();
 void kernel_event_loop();
@@ -270,6 +271,10 @@ void kernel_event_loop() {
         if(mouse_poll(&mouse_event)) {
             LOG_INFO("Mouse Event: buttons=%x, x=%d, y=%d\n", mouse_event.buttons_pressed, mouse_event.x_delta, mouse_event.y_delta);
         }
+        
+        // Refresh the screen to show clock updates and reduce flicker
+        text_mode_console_refresh();
+        
         asm volatile ("hlt");
     }
 }

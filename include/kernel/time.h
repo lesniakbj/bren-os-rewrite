@@ -4,6 +4,12 @@
 #include <libc/stdint.h>
 #include <arch/i386/time.h> // For CMOS_Time
 
+// Shared buffer for the console clock string
+extern char console_time_buffer[32];
+// Shared color for the console clock
+extern kuint8_t console_clock_color;
+
+
 /**
  * @brief Initializes the system time based on the initial CMOS read.
  *

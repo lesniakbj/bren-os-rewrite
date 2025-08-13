@@ -16,6 +16,17 @@ size_t strlen(const char *str) {
     return len;
 }
 
+char* strcpy(char* dest, const char* src) {
+    char* original_dest = dest;
+    while (*src != '\0') {
+        *dest = *src;
+        dest++;
+        src++;
+    }
+    *dest = '\0';
+    return original_dest;
+}
+
 int strncmp(const char *s1, const char *s2, size_t n) {
     // If n is 0, the strings are considered equal
     if (n == 0) {
