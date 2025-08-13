@@ -73,6 +73,12 @@ void vmm_unmap_page(virtual_addr_t virtual_addr);
 physical_addr_t vmm_get_physical_addr(virtual_addr_t virtual_addr);
 
 /**
+ * @brief Returns a pointer to the kernel's page directory.
+ * @return A pointer to the kernel's page directory.
+ */
+pde_t* vmm_get_kernel_directory();
+
+/**
  * @brief The handler for page faults (ISR 14).
  */
 void page_fault_handler(struct registers *regs);

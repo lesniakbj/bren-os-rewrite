@@ -21,4 +21,7 @@ void register_interrupt_handler(kuint8_t n, interrupt_handler_t handler);
 // Extern to be called from asm
 extern void isr_handler_c(struct registers *regs);
 
+// Context switch function
+extern void context_switch(kuint32_t new_esp);
+
 #endif

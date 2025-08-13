@@ -36,3 +36,4 @@ flush_tlb_single:
 read_cr2:
     movl %cr2, %eax
     ret
+

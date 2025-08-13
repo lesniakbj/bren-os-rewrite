@@ -16,6 +16,8 @@ void debug_pic();
 void debug_idt();
 void debug_multiboot_header(multiboot_info_t *mbi);
 void debug_pmm(pmm_init_status_t *pmm_status);
+void debug_proc_test();
+void test_heap_allocations();
 #endif
 
 #endif

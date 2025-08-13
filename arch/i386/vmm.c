@@ -245,6 +245,10 @@ physical_addr_t vmm_get_physical_addr(virtual_addr_t virtual_addr) {
     return addr | offset;
 }
 
+pde_t* vmm_get_kernel_directory() {
+    return page_directory;
+}
+
 void page_fault_handler(struct registers *regs){
     kuint32_t faulting_address = read_cr2();
 

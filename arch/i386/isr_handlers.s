@@ -105,3 +105,26 @@ isr_common_stub:
 
     add esp, 8 # Pop the pushed interrupt number and error code
     iret
+
+# Context switch function
+# Called from C code with one parameter:
+# - new_esp: ESP value to switch to
+.global context_switch
+context_switch:
+    # The C code has already saved the old process's state pointer.
+    # We just need to load the new process's state and go.
+    # The pointer to the new state (new_esp) is the first argument.
+    mov esp, [esp + 4]
+
+    # Restore all registers from the new process's stack
+    popa
+    pop gs
+    pop fs
+    pop es
+    pop ds
+
+    # Discard interrupt number and error code from the stack
+    add esp, 8
+
+    # Return to the new process
+    iret

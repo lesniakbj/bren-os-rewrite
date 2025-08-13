@@ -23,12 +23,11 @@ static unsigned int pit_tick_count = 0;
 static unsigned int pit_frequency = 0;
 static unsigned int pit_divisor = 0;
 
-// --- ADD THESE LINES ---
 // Counter for console clock updates
+static unsigned int schedule_counter = 0;
 static unsigned int console_clock_counter = 0;
-// Update console clock every N ticks (e.g., 100ms for 1kHz PIT)
+
 #define CONSOLE_CLOCK_UPDATE_INTERVAL 100
-// --- END ADDITIONS ---
 
 int pit_init(unsigned int frequency_hz) {
     if (frequency_hz == 0 || frequency_hz > PIT_BASE_FREQUENCY) {
@@ -65,8 +64,6 @@ int pit_init(unsigned int frequency_hz) {
 }
 
 void pit_handler(registers_t *regs) {
-    (void)regs; // Silence unused parameter warning if not using 'regs' directly
-    
     // Increment the global tick counter
     pit_tick_count++;
 
@@ -76,22 +73,13 @@ void pit_handler(registers_t *regs) {
         console_clock_counter = 0;
         update_console_clock(); // Update the clock display every N ticks
     }
-    // --- End Console Clock Update Logic ---
 
-    // TODO: Add logic for scheduling, updating system time, etc.
-    // Example placeholder for scheduler call:
-    /*
-    static unsigned int schedule_counter = 0;
+    // --- Process Scheduler Logic ---
     schedule_counter++;
-    if (schedule_counter >= 10) { // Example: schedule every 10 ticks
+    if (schedule_counter >= 10) {
         schedule_counter = 0;
-        proc_scheduler_run(); // Call your scheduler function
+        proc_scheduler_run(regs);
     }
-    */
-
-    // Send End-of-Interrupt (EOI) to the PIC for IRQ 0
-    // Assuming master PIC is at 0x20
-    outb(0x20, 0x20);
 }
 
 unsigned int pit_get_tick_count() {

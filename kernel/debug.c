@@ -1,7 +1,38 @@
 #include <kernel/debug.h>
+#include <kernel/proc.h>
+#include <drivers/terminal.h>
 
 #ifdef DEBUG
+
+void test_proc_1() {
+    while(1) {
+        LOG_DEBUG("A\n");
+        for(volatile int i = 0; i < 10000000; i++); // Delay loop
+        // Yield to scheduler
+        asm volatile("int $0x20"); // Trigger timer interrupt to yield
+    }
+}
+
+void test_proc_2() {
+    while(1) {
+        LOG_DEBUG("B\n");
+        for(volatile int i = 0; i < 10000000; i++); // Delay loop
+        // Yield to scheduler
+        asm volatile("int $0x20"); // Trigger timer interrupt to yield
+    }
+}
+
+void debug_proc_test() {
+    LOG_DEBUG("Initializing scheduler test...\n");
+    if(proc_init() == 0) {
+        proc_create(test_proc_1, true);
+        proc_create(test_proc_2, true);
+    }
+    LOG_DEBUG("Test processes created.\n");
+}
+
 void debug_time(CMOS_Time current_time) {
+
     LOG_DEBUG("Current Time: %d/%d/%d %d:%d:%d\n",
                             current_time.month,
                             current_time.day,
@@ -136,5 +167,125 @@ void debug_pmm(pmm_init_status_t *pmm_status) {
     LOG_DEBUG("Kernel ends at: 0x%x\n", pmm_status->kernel_end);
     LOG_DEBUG("Placing bitmap at: 0x%x\n", pmm_status->placement_address);
     LOG_DEBUG("%d blocks used initially.\n", pmm_status->used_blocks);
+}
+
+void test_heap_allocations() {
+    LOG_INFO("Testing heap allocation...\n");
+
+    // Print initial heap statistics
+    LOG_INFO("Initial heap stats - Total: %d bytes, Used: %d bytes, Free: %d bytes\n",
+                          heap_get_total_size(), heap_get_used_size(), heap_get_free_size());
+
+    generic_ptr test_alloc = kmalloc(128);
+    if (test_alloc) {
+        LOG_INFO("Heap allocation successful! Address: 0x%x, Size: %d\n", test_alloc, 128);
+    }
+
+    // Print heap statistics after first allocation
+    LOG_INFO("After first allocation - Total: %d bytes, Used: %d bytes, Free: %d bytes\n",
+                          heap_get_total_size(), heap_get_used_size(), heap_get_free_size());
+
+    generic_ptr null_realloc = krealloc(NULL, 256);
+    if (null_realloc) {
+        LOG_INFO("krealloc(NULL, 256) successful! Address: 0x%x\n", null_realloc);
+        char* data_ptr = (char*)null_realloc;
+        for(int i = 0; i < 10; i++) {
+            data_ptr[i] = 'A' + i;
+        }
+        LOG_INFO("Data written to null_realloc block\n");
+    }
+
+    // Print heap statistics after second allocation
+    LOG_INFO("After second allocation - Total: %d bytes, Used: %d bytes, Free: %d bytes\n",
+                          heap_get_total_size(), heap_get_used_size(), heap_get_free_size());
+
+    if (test_alloc) {
+        generic_ptr zero_realloc = krealloc(test_alloc, 0);
+        if (zero_realloc == NULL) {
+            LOG_INFO("krealloc(ptr, 0) correctly returned NULL and freed memory\n");
+        }
+    }
+
+    // Print heap statistics after freeing
+    LOG_INFO("After freeing - Total: %d bytes, Used: %d bytes, Free: %d bytes\n",
+                          heap_get_total_size(), heap_get_used_size(), heap_get_free_size());
+
+    generic_ptr expand_test = kmalloc(64);
+    if (expand_test) {
+        LOG_INFO("Initial block for expansion test: 0x%x, Size: %d\n", expand_test, 64);
+
+        char* data_ptr = (char*)expand_test;
+        for(int i = 0; i < 32; i++) {
+            data_ptr[i] = 'X' + (i % 26);
+        }
+        LOG_INFO("Data written to expand_test block\n");
+
+        generic_ptr expanded = krealloc(expand_test, 512);
+        if (expanded && expanded != expand_test) {
+            LOG_INFO("krealloc expanded block! Old: 0x%x, New: 0x%x, Size: %d\n", expand_test, expanded, 512);
+
+            char* new_data_ptr = (char*)expanded;
+            bool data_ok = true;
+            for(int i = 0; i < 32; i++) {
+                if (new_data_ptr[i] != ('X' + (i % 26))) {
+                    data_ok = false;
+                    break;
+                }
+            }
+
+            if (data_ok) {
+                LOG_INFO("Data successfully copied to new block!\n");
+            } else {
+                LOG_ERR("Data corruption detected!\n");
+            }
+
+            expand_test = expanded;
+        } else if (expanded == expand_test) {
+            LOG_INFO("Block was shrunk in place (no reallocation needed)\n");
+        } else {
+            LOG_ERR("Expansion failed!\n");
+        }
+    }
+
+    // Print heap statistics after expansion test
+    LOG_INFO("After expansion test - Total: %d bytes, Used: %d bytes, Free: %d bytes\n",
+                          heap_get_total_size(), heap_get_used_size(), heap_get_free_size());
+
+    if (expand_test) {
+        generic_ptr shrunk = krealloc(expand_test, 32);
+        if (shrunk) {
+            LOG_INFO("krealloc shrunk block! Result: 0x%x, Size: %d\n", shrunk, 32);
+            expand_test = shrunk;
+        } else {
+            LOG_ERR("Shrinking failed!\n");
+        }
+    }
+
+    // Print heap statistics after shrinking
+    LOG_INFO("After shrinking - Total: %d bytes, Used: %d bytes, Free: %d bytes\n",
+                          heap_get_total_size(), heap_get_used_size(), heap_get_free_size());
+
+    // Test heap expansion explicitly
+    LOG_INFO("Testing explicit heap expansion...\n");
+    size_t size_before_expansion = heap_get_total_size();
+    if (heap_expand(0x20000)) { // Expand by 128KB
+        LOG_INFO("Heap expansion successful! Size increased from %d to %d bytes\n",
+                              size_before_expansion, heap_get_total_size());
+    } else {
+        LOG_ERR("Heap expansion failed!\n");
+    }
+
+    // Print final heap statistics
+    LOG_INFO("Final heap stats - Total: %d bytes, Used: %d bytes, Free: %d bytes\n",
+                          heap_get_total_size(), heap_get_used_size(), heap_get_free_size());
+
+    if (null_realloc) kfree(null_realloc);
+    if (expand_test) kfree(expand_test);
+
+    // Print heap statistics after all freeing
+    LOG_INFO("After all freeing - Total: %d bytes, Used: %d bytes, Free: %d bytes\n",
+                          heap_get_total_size(), heap_get_used_size(), heap_get_free_size());
+
+    LOG_INFO("Heap testing completed!\n");
 }
 #endif
