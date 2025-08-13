@@ -1,5 +1,6 @@
 #include <arch/i386/time.h>
 #include <arch/i386/io.h>
+#include <kernel/time.h>
 
 #define CURRENT_YEAR 2025
 
@@ -8,7 +9,7 @@ int century_register = CENTURY_DATA_PORT;
 CMOS_Time current_time;
 
 static int update_in_progress_flag() {
-      outb(CMOS_CMD_PORT, 0x0A);
+      outb(CMOS_CMD_PORT, STATUS_REGISTER_A);
       return (inb(CMOS_DATA_PORT) & 0x80);
 }
 
@@ -93,6 +94,12 @@ CMOS_Time time_init() {
         if(current_time.year < CURRENT_YEAR) current_time.year += 100;
     }
 
+    // Enable RTC Update-Ended Interrupts
+    outb(CMOS_CMD_PORT, STATUS_REGISTER_B);
+    kuint8_t regB_val = inb(CMOS_DATA_PORT);
+    outb(CMOS_CMD_PORT, STATUS_REGISTER_B);
+    outb(CMOS_DATA_PORT, regB_val | 0x10);
+
     return current_time;
 }
 
@@ -136,4 +143,19 @@ kuint64_t time_to_unix_seconds(CMOS_Time* t) {
     timestamp += seconds;
 
     return timestamp;
+}
+
+void rtc_handler(registers_t* regs) {
+    (void)regs; // Unused
+
+    // Increment the global seconds counter.
+    g_unix_seconds++;
+
+    // Reading CMOS Register C is necessary to allow the RTC to send another interrupt.
+    outb(CMOS_CMD_PORT, STATUS_REGISTER_C);
+    inb(CMOS_DATA_PORT); // Discard the value
+
+    // Send EOI to slave and master PICs.
+    outb(0xA0, 0x20); // Slave
+    outb(0x20, 0x20); // Master
 }

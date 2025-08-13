@@ -2,6 +2,7 @@
 #define ARCH_I386_TIME_H
 
 #include <libc/stdint.h>
+#include <arch/i386/interrupts.h>
 
 #define CMOS_CMD_PORT 0x70
 #define CMOS_DATA_PORT 0x71
@@ -15,6 +16,7 @@
 #define CENTURY_DATA_PORT 0x32
 #define STATUS_REGISTER_A 0x0A
 #define STATUS_REGISTER_B 0x0B
+#define STATUS_REGISTER_C 0x0C
 
 // Structure to hold all CMOS time fields
 typedef struct {
@@ -29,5 +31,6 @@ typedef struct {
 
 CMOS_Time time_init();
 kuint64_t time_to_unix_seconds(CMOS_Time* t);
+void rtc_handler(registers_t* regs);
 
 #endif

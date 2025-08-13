@@ -27,7 +27,7 @@ static unsigned int pit_divisor = 0;
 // Counter for console clock updates
 static unsigned int console_clock_counter = 0;
 // Update console clock every N ticks (e.g., 100ms for 1kHz PIT)
-#define CONSOLE_CLOCK_UPDATE_INTERVAL 1000
+#define CONSOLE_CLOCK_UPDATE_INTERVAL 100
 // --- END ADDITIONS ---
 
 int pit_init(unsigned int frequency_hz) {

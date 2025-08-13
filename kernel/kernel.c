@@ -85,6 +85,7 @@ void kernel_main(kuint32_t magic, kuint32_t multiboot_addr) {
     inb(0x60); // Read and discard again, just in case
     mouse_init();
     register_interrupt_handler(0x2C, mouse_handler);
+    register_interrupt_handler(0x28, rtc_handler); // Register RTC handler for IRQ8
 
     // ---- Phase 3 ----
     // Now we're all set up, lets enable interrupts

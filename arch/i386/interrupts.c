@@ -14,8 +14,9 @@ void isr_handler_c(struct registers *regs) {
     }
 
     // For IRQs, we need to send an End-of-Interrupt (EOI) to the PIC.
-    // The mouse handler (IRQ 12, vector 44) is responsible for its own EOI.
-    if (regs->interrupt_number >= 32 && regs->interrupt_number <= 47 && regs->interrupt_number != 44) {
+    // The mouse handler (IRQ 12, vector 44) and RTC handler (IRQ 8, vector 40)
+    // are responsible for their own EOI.
+    if (regs->interrupt_number >= 32 && regs->interrupt_number <= 47 && regs->interrupt_number != 44 && regs->interrupt_number != 40) {
         if (regs->interrupt_number >= 40) {
             outb(0xA0, 0x20); // EOI for slave PIC
         }

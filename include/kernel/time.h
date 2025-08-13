@@ -8,6 +8,8 @@
 extern char console_time_buffer[32];
 // Shared color for the console clock
 extern kuint8_t console_clock_color;
+// Authoritative seconds counter updated by the RTC
+extern volatile kuint64_t g_unix_seconds;
 
 
 /**

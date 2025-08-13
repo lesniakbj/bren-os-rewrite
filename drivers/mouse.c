@@ -85,7 +85,6 @@ int mouse_poll(mouse_event_t* event_out) {
 
 // The interrupt handler for the mouse.
 void mouse_handler(struct registers *regs) {
-
     // Read the byte from the mouse. This MUST be done to acknowledge
     // the interrupt to the PS/2 controller.
     kuint8_t data = inb(MOUSE_DATA_PORT);

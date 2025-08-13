@@ -7,9 +7,8 @@
 
 // --- Global state for system time ---
 
-// Base Unix timestamp from CMOS initialization
-static kuint64_t base_unix_timestamp = 0;
-
+// Authoritative seconds counter, updated by the RTC interrupt.
+volatile kuint64_t g_unix_seconds = 0;
 // Flag to check if system time is initialized
 static int system_time_initialized = 0;
 
@@ -30,16 +29,15 @@ void system_time_init(CMOS_Time *initial_cmos_time) {
         // Handle error or log
         return;
     }
-    base_unix_timestamp = time_to_unix_seconds(initial_cmos_time);
+    g_unix_seconds = time_to_unix_seconds(initial_cmos_time);
     system_time_initialized = 1;
 }
 
 /**
  * @brief Gets the current high-resolution system time.
  *
- * Calculates the current time based on the initial CMOS time and
- * elapsed PIT ticks. Calculates elapsed time in microseconds to
- * avoid 64-bit division issues.
+ * Calculates the current time based on the authoritative RTC seconds and
+ * the sub-second precision of the PIT.
  *
  * @param seconds Pointer to store the current Unix timestamp (seconds).
  * @param nanoseconds Pointer to store the nanosecond remainder.
@@ -51,47 +49,23 @@ void get_current_time(kuint64_t *seconds, kuint64_t *nanoseconds) {
         return;
     }
 
+    // The authoritative second count comes from our RTC-updated global variable.
+    *seconds = g_unix_seconds;
+
+    // The nanosecond part is derived from the PIT's progress through the current second.
     unsigned int tick_count = pit_get_tick_count();
-    unsigned int frequency = pit_get_frequency(); // Declared in pit.h
+    unsigned int frequency = pit_get_frequency();
 
     if (frequency == 0) {
-         // Avoid division by zero
-         *seconds = base_unix_timestamp;
          *nanoseconds = 0;
          return;
     }
 
-    // --- Calculate elapsed time in microseconds ---
-    // elapsed_us = (tick_count * 1000000) / frequency;
-    // To avoid 64-bit division, we break it down.
-    // elapsed_us = (tick_count / frequency) * 1000000 + ((tick_count % frequency) * 1000000) / frequency;
+    // Calculate total nanoseconds since boot according to the PIT
+    kuint64_t total_ns_from_pit = ((kuint64_t)tick_count * 1000000000ULL) / (kuint64_t)frequency;
 
-    kuint64_t elapsed_us_final = 0;
-    if (frequency <= 1000000) {
-        unsigned int whole_seconds_in_ticks = tick_count / frequency;
-        unsigned int remainder_ticks = tick_count % frequency;
-        
-        unsigned int remainder_us_part = 0;
-        if (frequency <= 4294) {
-            // Safe for 32-bit intermediate calculation
-            remainder_us_part = (remainder_ticks * 1000000) / frequency;
-        } else {
-            // For higher frequencies, use 64-bit intermediate.
-            // This relies on our custom __udivdi3 implementation.
-            kuint64_t remainder_us_64 = ((kuint64_t)remainder_ticks * 1000000ULL) / (kuint64_t)frequency;
-            remainder_us_part = (unsigned int)remainder_us_64;
-        }
-
-        kuint64_t whole_seconds_us = (kuint64_t)whole_seconds_in_ticks * 1000000ULL;
-        elapsed_us_final = whole_seconds_us + (kuint64_t)remainder_us_part;
-    } else {
-        // Fallback for very high frequencies (unlikely for PIT)
-        elapsed_us_final = ((kuint64_t)tick_count * 1000000ULL) / (kuint64_t)frequency;
-    }
-
-    // Convert elapsed microseconds to seconds and nanoseconds
-    *seconds = base_unix_timestamp + (elapsed_us_final / 1000000ULL);
-    *nanoseconds = (elapsed_us_final % 1000000ULL) * 1000ULL; // Convert us remainder to ns
+    // The remainder is the nanoseconds within the current second.
+    *nanoseconds = total_ns_from_pit % 1000000000ULL;
 }
 
 
