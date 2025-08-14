@@ -4,9 +4,13 @@
 #include <libc/stdint.h>
 
 struct registers {
-    kuint32_t gs, fs, es, ds;
+    // Pushed by pusha
     kuint32_t edi, esi, ebp, esp, ebx, edx, ecx, eax;
+    // Pushed manually in isr_common_stub
+    kuint32_t ds, es, fs, gs;
+    // Pushed by the ISR stub
     kuint32_t interrupt_number, error_code;
+    // Pushed by the CPU on interrupt
     kuint32_t eip, cs, eflags, useresp, ss;
 } __attribute__((packed));
 

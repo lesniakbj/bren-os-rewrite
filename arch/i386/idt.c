@@ -54,6 +54,9 @@ extern void isr45();
 extern void isr46();
 extern void isr47();
 
+// Syscall stub
+extern void isr128();
+
 struct idt_gate_descriptor idt_entries[IDT_ENTRIES];
 struct idt_ptr_entry idt_ptr;
 
@@ -112,6 +115,10 @@ void idt_init(void) {
     idt_populate_idt_entries(45, (kuint32_t)isr45, 0x08, 0x8E); // IRQ13
     idt_populate_idt_entries(46, (kuint32_t)isr46, 0x08, 0x8E); // IRQ14
     idt_populate_idt_entries(47, (kuint32_t)isr47, 0x08, 0x8E); // IRQ15
+
+    // -- Syscall --
+    idt_populate_idt_entries(128, (kuint32_t)isr128, 0x08, 0xEF); // Syscalls
+
 
     idt_load(&idt_ptr);
 }

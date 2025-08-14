@@ -12,6 +12,7 @@ C_SOURCES = \
 	kernel/acpi.c \
 	kernel/heap.c \
 	kernel/proc.c \
+	kernel/syscall.c \
 	kernel/time.c \
 	kernel/log.c \
 	kernel/debug.c \
@@ -26,6 +27,7 @@ C_SOURCES = \
 	drivers/mouse.c \
 	libc/stdlib.c \
 	libc/strings.c \
+	libc/sysstd.c \
 	arch/i386/time.c \
 	arch/i386/memory.c \
 	arch/i386/pmm.c \

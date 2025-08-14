@@ -72,6 +72,9 @@ ISR_NOERRCODE 45  # IRQ13
 ISR_NOERRCODE 46  # IRQ14
 ISR_NOERRCODE 47  # IRQ15
 
+# Syscall interrupt
+ISR_NOERRCODE 128 # Interrupt 0x80
+
 # Common entry point for all ISRs
 isr_common_stub:
     # Save segment registers first to align with struct registers
@@ -98,10 +101,10 @@ isr_common_stub:
     popa
 
     # Restore segment registers
-    pop gs
-    pop fs
-    pop es
     pop ds
+    pop es
+    pop fs
+    pop gs
 
     add esp, 8 # Pop the pushed interrupt number and error code
     iret
@@ -118,10 +121,10 @@ context_switch:
 
     # Restore all registers from the new process's stack
     popa
-    pop gs
-    pop fs
-    pop es
     pop ds
+    pop es
+    pop fs
+    pop gs
 
     # Discard interrupt number and error code from the stack
     add esp, 8

@@ -4,6 +4,7 @@
 #include <kernel/heap.h>
 #include <kernel/log.h>
 #include <kernel/debug.h>
+#include <kernel/syscall.h>
 #include <arch/i386/idt.h>
 #include <arch/i386/gdt.h>
 #include <arch/i386/pic.h>
@@ -20,6 +21,7 @@
 #include <drivers/mouse.h>
 #include <drivers/keyboard_events.h>
 #include <drivers/text_mode_console.h>
+#include <libc/sysstd.h>
 
 void keyboard_proc();
 void mouse_proc();
@@ -70,6 +72,7 @@ void kernel_main(kuint32_t magic, kuint32_t multiboot_addr) {
     register_interrupt_handler(0x21, keyboard_handler);
     register_interrupt_handler(0x2C, mouse_handler);
     register_interrupt_handler(0x28, rtc_handler);
+    register_interrupt_handler(0x80, syscall_handler);
 
     // Initialize the process scheduler
     proc_init();
@@ -85,6 +88,7 @@ void kernel_main(kuint32_t magic, kuint32_t multiboot_addr) {
     // It will halt until the next interrupt, saving CPU.
     // All other work is done by scheduled processes or interrupt handlers.
     while(1) {
+        text_mode_console_refresh();
         asm volatile("hlt");
     }
 }
@@ -116,9 +120,9 @@ void keyboard_proc() {
                 }
             }
         }
-        // Let the scheduler run other processes.
-        // A proper yield() syscall would be better here in the future.
-        asm volatile ("hlt");
+
+        // Voluntarily give up the CPU to the scheduler.
+        yield();
     }
 }
 
@@ -138,7 +142,7 @@ void mouse_proc() {
         if(mouse_poll(&mouse_event)) {
             LOG_INFO("Mouse Event: buttons=%x, x=%d, y=%d\n", mouse_event.buttons_pressed, mouse_event.x_delta, mouse_event.y_delta);
         }
-        // Let the scheduler run other processes.
-        asm volatile ("hlt");
+        // Voluntarily give up the CPU to the scheduler.
+        yield();
     }
 }
