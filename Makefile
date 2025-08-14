@@ -13,6 +13,7 @@ C_SOURCES = \
 	kernel/heap.c \
 	kernel/proc.c \
 	kernel/syscall.c \
+	kernel/vfs.c \
 	kernel/time.c \
 	kernel/log.c \
 	kernel/debug.c \

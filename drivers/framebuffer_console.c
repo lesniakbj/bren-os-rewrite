@@ -98,10 +98,11 @@ void framebuffer_putchar(char c) {
     }
 }
 
-void framebuffer_write(const char* data, int size) {
-	for (int i = 0; i < size; i++) {
+int framebuffer_write(const char* data, size_t size) {
+	for (size_t i = 0; i < size; i++) {
 		framebuffer_putchar(data[i]);
 	}
+    return size;
 }
 
 void framebuffer_writestring(const char* data) {

@@ -1,10 +1,11 @@
 #include <drivers/terminal.h>
 #include <kernel/multiboot.h>
+#include <kernel/log.h>
 
 extern void text_mode_console_init(void);
 extern void text_mode_clear(void);
 extern void text_mode_putchar(char c);
-extern void text_mode_write(const char* data, int size);
+extern int text_mode_write(const char* data, size_t size);
 extern void text_mode_writestring(const char* data);
 extern void text_mode_setcolor(vga_color_t fg, vga_color_t bg);
 extern void text_mode_scroll(int lines);
@@ -12,7 +13,7 @@ extern void text_mode_scroll(int lines);
 extern void framebuffer_console_init(multiboot_info_t* mbi);
 extern void framebuffer_clear(void);
 extern void framebuffer_putchar(char c);
-extern void framebuffer_write(const char* data, int size);
+extern int framebuffer_write(const char* data, size_t size);
 extern void framebuffer_writestring(const char* data);
 extern void framebuffer_setcolor(vga_color_t fg, vga_color_t bg);
 extern void framebuffer_scroll(int lines);
@@ -50,8 +51,9 @@ void terminal_putchar(char c) {
     active_driver.putchar(c);
 }
 
-void terminal_write(const char* data, int size) {
-    active_driver.write(data, size);
+int terminal_write(const char* data, size_t size) {
+    LOG_DEBUG(data);
+    return active_driver.write(data, size);
 }
 
 void terminal_write_string(const char* data) {

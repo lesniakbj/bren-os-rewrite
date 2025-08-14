@@ -4,6 +4,7 @@
 #include <libc/stdint.h>
 #include <arch/i386/interrupts.h>
 #include <arch/i386/vmm.h>
+#include <kernel/vfs.h>
 
 #define MAX_PROCESSES 1024
 #define KERNEL_STACK_SIZE 4096
@@ -12,6 +13,9 @@
 #define RUNNING 1
 #define KILLED  2
 #define PAUSED  3
+#define EXITED  4
+
+#define MAX_OPEN_FILES 128   // Total number of file handles (io, drivers, etc) a process can have
 
 typedef struct process {
     kuint32_t esp; /* Saved ESP */
@@ -22,12 +26,20 @@ typedef struct process {
     size_t kernel_stack_size;
     kuint32_t parent_proc_id;
     bool used;
+    file_node_t* open_files[MAX_OPEN_FILES];
 } process_t;
 
 typedef void (*proc_entry_point_t)(void);
 
+
 int proc_init();
+
 process_t* proc_create(proc_entry_point_t entry_point, bool restore_interrupts);
+process_t* proc_get_current();
+void proc_terminate(process_t* proc);
+
+void create_user_process();
+
 void proc_scheduler_run(registers_t *regs);
 
 #endif

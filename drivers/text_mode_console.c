@@ -151,10 +151,11 @@ void text_mode_putchar(char c) {
     // --- End of Display Update ---
 }
 
-void text_mode_write(const char* data, int size) {
-	for (int i = 0; i < size; i++) {
+int text_mode_write(const char* data, size_t size) {
+	for (size_t i = 0; i < size; i++) {
 		text_mode_putchar(data[i]);
 	}
+    return size;
 }
 
 void text_mode_writestring(const char* data) {

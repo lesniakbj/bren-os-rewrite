@@ -36,6 +36,7 @@ void kernel_main(kuint32_t magic, kuint32_t multiboot_addr) {
         return;
     }
     gdt_init();
+    tss_init();
     idt_init();
     pic_remap(0x20, 0x28);
 
@@ -74,12 +75,18 @@ void kernel_main(kuint32_t magic, kuint32_t multiboot_addr) {
     register_interrupt_handler(0x28, rtc_handler);
     register_interrupt_handler(0x80, syscall_handler);
 
+    // Initialize the vfs so it can be used by Procs
+    vfs_init();
+
     // Initialize the process scheduler
     proc_init();
 
     // Create the driver processes
     proc_create(keyboard_proc);
     proc_create(mouse_proc);
+
+    // Create a test user mode program here
+    create_user_process();
 
     // Enable interrupts now that all handlers are registered.
     enable_interrupts();
@@ -122,7 +129,10 @@ void keyboard_proc() {
         }
 
         // Voluntarily give up the CPU to the scheduler.
-        yield();
+        kuint32_t id = proc_pid();
+        LOG_INFO("Voluntarily exiting process ID: %d\n", id);
+        vfs_write(1, "hello before exit\n", 19);
+        proc_exit(-1);
     }
 }
 
@@ -143,6 +153,6 @@ void mouse_proc() {
             LOG_INFO("Mouse Event: buttons=%x, x=%d, y=%d\n", mouse_event.buttons_pressed, mouse_event.x_delta, mouse_event.y_delta);
         }
         // Voluntarily give up the CPU to the scheduler.
-        yield();
+        proc_yield();
     }
 }

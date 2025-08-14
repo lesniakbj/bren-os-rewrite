@@ -5,5 +5,9 @@
 
 void syscall_handler(registers_t *regs);
 void sys_yield(registers_t *regs);
+void sys_exit(registers_t *regs);
+void sys_pid(registers_t *regs);
+
+kint32_t sys_vfs_write(registers_t *regs);
 
 #endif
