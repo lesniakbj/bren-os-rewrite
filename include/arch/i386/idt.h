@@ -3,6 +3,10 @@
 
 #define IDT_ENTRIES 256
 
+#define IDT_PRESENT 0x80
+#define IDT_DPL3    0x60
+#define IDT_INT32   0x0E  // 32-bit interrupt gate
+
 #include <libc/stdint.h>
 #include <libc/stdlib.h>
 

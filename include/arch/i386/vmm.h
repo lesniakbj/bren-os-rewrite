@@ -43,6 +43,6 @@ void vmm_map_page(virtual_addr_t virtual_addr, physical_addr_t physical_addr, ku
 void vmm_unmap_page(virtual_addr_t virtual_addr);
 physical_addr_t vmm_get_physical_addr(virtual_addr_t virtual_addr);
 pde_t* vmm_get_kernel_directory();
-void page_fault_handler(struct registers *regs);
+void page_fault_handler(registers_t *regs);
 
 #endif //ARCH_I386_VMM_H

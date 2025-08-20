@@ -1,5 +1,6 @@
 #include <drivers/terminal.h>
 #include <kernel/multiboot.h>
+#include <kernel/sync.h>
 #include <kernel/log.h>
 
 // Functions referencing the text-mode terminal
@@ -22,6 +23,7 @@ extern void framebuffer_scroll(kint32_t lines);
 
 // The currently active terminal driver
 static struct terminal_driver active_driver;
+
 
 // On init, check if we are using the framebuffer or not (GRUB will set this up for us)
 void terminal_init(multiboot_info_t* mbi) {
@@ -59,8 +61,12 @@ kint32_t terminal_write(const char* data, size_t size) {
     return active_driver.write(data, size);
 }
 
+static spinlock_t terminal_write_lock = SPINLOCK_UNLOCKED;
+
 void terminal_write_string(const char* data) {
+    spinlock_acquire(&terminal_write_lock);
     active_driver.writestring(data);
+    spinlock_release(&terminal_write_lock);
 }
 
 void terminal_setcolor(vga_color_t fg, vga_color_t bg) {

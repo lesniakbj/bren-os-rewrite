@@ -64,6 +64,19 @@
 #define SERIAL_MODEM_RTS_ASSERT         0x02
 #define SERIAL_MODEM_IRQ_ENABLE         0x08
 
+// Macros to encapsulate VFS function defs
+#define SERIAL_VFS_ADAPTER(NAME, PORT)                      \
+    kint32_t NAME##_write(const char* buf, size_t count) {  \
+        for (size_t i = 0; i < count; i++) {                \
+            serial_write_char(PORT, buf[i]);                \
+        }                                                   \
+        return (kint32_t)count;                             \
+    }                                                       \
+    kint32_t NAME##_write_string(const char* str) {         \
+        serial_write_string(PORT, str);                     \
+        return (kint32_t)strlen(str);                       \
+    }
+
 // Function prototypes
 void serial_init(kuint16_t port);
 void serial_write_char(kuint16_t port, char c);

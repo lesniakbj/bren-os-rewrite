@@ -35,7 +35,7 @@ void idt_init(void) {
     }
 
     // -- Syscall --
-    idt_populate_idt_entries(128, (kuint32_t)isr128, 0x08, 0xEF);
+    idt_populate_idt_entries(128, (kuint32_t)isr128, 0x08, IDT_PRESENT | IDT_DPL3 | IDT_INT32);
 
     idt_load(&idt_ptr);
 }

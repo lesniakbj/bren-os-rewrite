@@ -17,7 +17,7 @@ static kuint32_t console_clock_counter = 0;
 kint32_t pit_init(kuint32_t frequency_hz) {
     // Ensure the requested frequency for the PIT is in bounds
     if (frequency_hz == 0 || frequency_hz > PIT_BASE_FREQUENCY) {
-        LOG_ERR("Invalid frequency requested: %u Hz\n", frequency_hz);
+        LOG_ERR("Invalid frequency requested: %u Hz", frequency_hz);
         return -1;
     }
 
@@ -28,7 +28,7 @@ kint32_t pit_init(kuint32_t frequency_hz) {
     if (PIT_BASE_FREQUENCY % frequency_hz != 0) {
         // The actual frequency will be slightly different
         kuint32_t actual_freq = PIT_BASE_FREQUENCY / pit_divisor;
-        LOG_WARN("Requested freq %d Hz, actual freq approx %d Hz due to integer division.\n",
+        LOG_WARN("Requested freq %d Hz, actual freq approx %d Hz due to integer division.",
                  frequency_hz, actual_freq);
     }
 
@@ -45,7 +45,7 @@ kint32_t pit_init(kuint32_t frequency_hz) {
     // Reset tick counter
     pit_tick_count = 0;
 
-    LOG_INFO("PIT initialized: Frequency=%d Hz, Divisor=%d\n", pit_frequency, pit_divisor);
+    LOG_INFO("PIT initialized: Frequency=%d Hz, Divisor=%d", pit_frequency, pit_divisor);
     return 0;
 }
 

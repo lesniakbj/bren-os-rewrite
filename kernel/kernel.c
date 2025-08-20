@@ -14,6 +14,7 @@
 #include <arch/i386/vmm.h>
 #include <arch/i386/pmm.h>
 #include <arch/i386/time.h>
+#include <arch/i386/fault.h>
 #include <drivers/pit.h>
 #include <drivers/screen.h>
 #include <drivers/serial.h>
@@ -32,7 +33,7 @@ void kernel_main(kuint32_t magic, kuint32_t multiboot_addr) {
     // Phase 1: Core system initialization (no dependencies other than the MBI)
     log_init(mbi);
     if(magic != MULTIBOOT_BOOTLOADER_MAGIC) {
-        LOG_ERR("Invalid magic number: 0x%x\n", magic);
+        LOG_ERR("Invalid magic number: 0x%x", magic);
         return;
     }
     gdt_init();
@@ -55,13 +56,14 @@ void kernel_main(kuint32_t magic, kuint32_t multiboot_addr) {
         register_interrupt_handler(0x20, pit_handler);
         system_time_init(&current_time);
     } else {
-        LOG_ERR("FATAL: No timer available!\n");
+        LOG_ERR("FATAL: No timer available!");
         return; // Halt if no timer
     }
 
     // Register interrupt handlers BEFORE enabling interrupts.
     // The device initialization will happen inside their respective processes.
     register_interrupt_handler(0x0E, page_fault_handler);
+    register_interrupt_handler(0x0D, general_protection_fault_handler);
     register_interrupt_handler(0x21, keyboard_handler);
     register_interrupt_handler(0x2C, mouse_handler);
     register_interrupt_handler(0x28, rtc_handler);
@@ -78,16 +80,18 @@ void kernel_main(kuint32_t magic, kuint32_t multiboot_addr) {
     proc_create(mouse_proc, false);
 
     // Create a test user mode program here
-    // create_user_process();
+    create_user_process();
+    // create_user_process_syscall_exit();
 
     // Enable interrupts now that all handlers are registered.
     asm volatile("sti");
+    LOG_DEBUG("Interrupts are now enabled, processes starting...");
 
     // The kernel's main thread now becomes the idle task.
     // All other work is done by scheduled processes or interrupt handlers.
     while(1) {
         text_mode_console_refresh();
-        // vfs_write(1, "Hello from proc 0\n", 19);
+        // vfs_write(1, "Hello from proc 0", 19);
         asm volatile("hlt");
     }
 }
@@ -103,7 +107,7 @@ void keyboard_proc() {
     inb(0x60);
     asm volatile("sti");
 
-    LOG_INFO("Keyboard process started.\n");
+    LOG_INFO("Keyboard process started.");
 
     // --- Main Loop ---
     keyboard_event_t keyboard_event;
@@ -122,8 +126,9 @@ void keyboard_proc() {
 
         // Voluntarily give up the CPU to the scheduler... by exiting...
         kuint32_t id = proc_pid();
-        LOG_INFO("Voluntarily exiting process ID: %d\n", id);
-        vfs_write(1, "hello before exit\n", 19);
+        LOG_INFO("Voluntarily exiting process ID: %d", id);
+        vfs_write(1, "hello before exit\n", sizeof("hello before exit\n") - 1);
+        vfs_write(3, "hello before exit\n", sizeof("hello before exit\n") - 1);
         proc_exit(-1);
     }
 }
@@ -136,7 +141,7 @@ void mouse_proc() {
     mouse_init();
     asm volatile("sti");
 
-    LOG_INFO("Mouse process started.\n");
+    LOG_INFO("Mouse process started.");
 
     // --- Main Loop ---
     mouse_event_t mouse_event;
@@ -161,15 +166,15 @@ void mouse_proc() {
             }
 
             if(b4) {
-                LOG_INFO("Mouse button 4 was pressed!\n");
+                LOG_INFO("Mouse button 4 was pressed!");
             }
 
             if(b5) {
-                LOG_INFO("Mouse button 5 was pressed!\n");
+                LOG_INFO("Mouse button 5 was pressed!");
             }
 
             if(mouse_event.buttons_pressed & 0x01) {
-                LOG_INFO("Mouse button left was pressed!\n");
+                LOG_INFO("Mouse button left was pressed!");
             }
         }
         // Voluntarily give up the CPU to the scheduler.

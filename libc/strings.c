@@ -92,3 +92,90 @@ char* strrchr(const char* str, kint32_t c) {
     // Return the pointer to the last occurrence found, or NULL if not found
     return last_occurrence;
 }
+
+kint32_t sprintf(char* buffer, const char* format, ...) {
+    va_list args;
+    va_start(args, format);
+
+    kuint32_t i = 0;
+    size_t buff_size = 1024;
+    while (*format != '\0' && i < buff_size - 1) {
+        if (*format == '%') {
+            format++;
+            if (*format == 's') {
+                char* s = va_arg(args, char*);
+                while (*s != '\0' && i < buff_size - 1) {
+                    buffer[i++] = *s++;
+                }
+            } else if (*format == 'd') {
+                kint32_t d = va_arg(args, kint32_t);
+                char num_buf[32];
+                itoa(num_buf, 'd', d);
+                char* s = num_buf;
+                while (*s != '\0' && i < buff_size - 1) {
+                    buffer[i++] = *s++;
+                }
+            } else if (*format == 'x') {
+                kuint32_t x = va_arg(args, kuint32_t);
+                char num_buf[32];
+                itoa(num_buf, 'x', x);
+                char* s = num_buf;
+                while (*s != '\0' && i < buff_size - 1) {
+                    buffer[i++] = *s++;
+                }
+            } else if (*format == '%') {
+                buffer[i++] = '%';
+            }
+        } else {
+            buffer[i++] = *format;
+        }
+        format++;
+    }
+    buffer[i] = '\0';
+
+    va_end(args);
+    return i;
+}
+
+kint32_t snprintf(char* buffer, size_t buff_size, const char* format, ...) {
+    va_list args;
+    va_start(args, format);
+
+    kuint32_t i = 0;
+    while (*format != '\0' && i < buff_size - 1) {
+        if (*format == '%') {
+            format++;
+            if (*format == 's') {
+                char* s = va_arg(args, char*);
+                while (*s != '\0' && i < buff_size - 1) {
+                    buffer[i++] = *s++;
+                }
+            } else if (*format == 'd') {
+                kint32_t d = va_arg(args, kint32_t);
+                char num_buf[32];
+                itoa(num_buf, 'd', d);
+                char* s = num_buf;
+                while (*s != '\0' && i < buff_size - 1) {
+                    buffer[i++] = *s++;
+                }
+            } else if (*format == 'x') {
+                kuint32_t x = va_arg(args, kuint32_t);
+                char num_buf[32];
+                itoa(num_buf, 'x', x);
+                char* s = num_buf;
+                while (*s != '\0' && i < buff_size - 1) {
+                    buffer[i++] = *s++;
+                }
+            } else if (*format == '%') {
+                buffer[i++] = '%';
+            }
+        } else {
+            buffer[i++] = *format;
+        }
+        format++;
+    }
+    buffer[i] = '\0';
+
+    va_end(args);
+    return i;
+}

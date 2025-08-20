@@ -1,10 +1,7 @@
 #include <kernel/log.h>
-#include <kernel/sync.h>
 #include <drivers/serial.h>
 #include <drivers/screen.h>
 #include <drivers/terminal.h>
-
-static spinlock_t log_lock = SPINLOCK_UNLOCKED;
 
 static const char* levelNames[] = {
     [LOG_LEVEL_DEBUG] = "DEBUG",
@@ -16,16 +13,7 @@ static const char* levelNames[] = {
 
 #define SERIAL_LOG 1
 #define SCREEN_LOG 1
-
-static inline bool check_interrupts_enabled() {
-    kuint64_t flags;
-    asm volatile (
-        "pushf \n"        // Push the EFLAGS register onto the stack
-        "pop %0 \n"       // Pop the value from the stack into the 'flags' variable
-        : "=r" (flags)  // Output operand: 'flags' is a general-purpose register
-    );
-    return flags & (1 << 9);
-}
+#define LOG_CALLER 0
 
 // Similar to a simplified sprintf() but without flags/width/precision/etc...
 // Implementation based on various parts of: https://stackoverflow.com/questions/16647278/minimal-implementation-of-sprintf-or-printf
@@ -86,21 +74,16 @@ void log_init(multiboot_info_t *mbi) {
     screen_init(mbi);
 #endif
 
-    LOG_INFO("Booting %s-kernel %s (Built %s %s)\n", "TestOS", "0.0.1v", __DATE__, __TIME__);
-    LOG_INFO("Copyright (C) 2025 Brendan Lesniak. MIT Licensed.\n");
+    LOG_INFO("Booting %s-kernel %s (Built %s %s)", "BrenOS", "0.0.1v", __DATE__, __TIME__);
+    LOG_INFO("Copyright (C) 2025 Brendan Lesniak. MIT Licensed.");
 }
 
 void log_print(log_level_t level, const char* file, void* caller_addr, int line, const char* format, ...) {
-    static bool return_lock = false;
-    if(check_interrupts_enabled()) {
-        spinlock_acquire(&log_lock);
-        return_lock = true;
-    }
-
     va_list args;
     va_start(args, format);
 
-    // For each log line, we concantenate 3 pieces of information...
+#if LOG_CALLER
+    // For each log line, we concatenate 3 pieces of information...
     // ... Call info (File, Line, Caller Address) ...
     char call_info[128];
     format_string_simple(call_info, 128, "%s.%d:0x%x :: ", file, line, caller_addr);
@@ -111,9 +94,11 @@ void log_print(log_level_t level, const char* file, void* caller_addr, int line,
     terminal_write_string(call_info);
 #endif
 
+#endif // LOG_CALLER
+
     // ... Log Level Header ...
     char header[64];
-    format_string_simple(header, 64, "[%s] :: ", levelNames[level]);
+    format_string_simple(header, 64, "[%s]\t:: ", levelNames[level]);
 #if SERIAL_LOG
     serial_write_string(SERIAL_COM1, header);
 #endif
@@ -124,6 +109,13 @@ void log_print(log_level_t level, const char* file, void* caller_addr, int line,
     // ... The Log Message
     char buf[256];
     format_string(buf, 256, format, args);
+    size_t len = strlen(buf);
+    if(buf[len - 1] != '\n') {
+        if (len < sizeof(buf) - 1) {  // Ensure space for newline
+            buf[len] = '\n';
+            buf[len + 1] = '\0';
+        }
+    }
 #if SERIAL_LOG
     serial_write_string(SERIAL_COM1, buf);
 #endif
@@ -132,7 +124,4 @@ void log_print(log_level_t level, const char* file, void* caller_addr, int line,
 #endif
 
     va_end(args);
-
-    if(return_lock)
-        spinlock_release(&log_lock);
 }

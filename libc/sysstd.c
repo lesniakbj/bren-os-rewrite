@@ -2,14 +2,12 @@
 #include <kernel/log.h>
 
 void proc_yield() {
-    // We use the EAX register to tell the kernel which syscall we want.
-    // 'int 0x80' is the traditional interrupt number for syscalls on x86.
+    // We use the EAX register to tell the kernel which syscall we want
     asm volatile("movl %0, %%eax; int $0x80" : : "i" (SYSCALL_PROC_YIELD) : "eax");
 }
 
 void proc_exit(int status) {
     // Use register constraints to load syscall number into eax and status into ebx.
-    // This is cleaner and avoids the "impossible constraint" error.
     asm volatile("int $0x80" : : "a" (SYSCALL_PROC_EXIT), "b" (status));
 }
 

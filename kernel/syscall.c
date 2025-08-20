@@ -1,6 +1,7 @@
 #include <kernel/syscall.h>
 #include <kernel/proc.h>
 #include <kernel/log.h>
+#include <kernel/sync.h>
 #include <libc/sysstd.h>
 
 void syscall_handler(registers_t *regs) {
@@ -20,7 +21,7 @@ void syscall_handler(registers_t *regs) {
             sys_vfs_write(regs);
             break;
         default:
-            LOG_ERR("Unknown syscall: %d\n", syscall);
+            LOG_ERR("Unknown syscall: %d", syscall);
             break;
     }
 }
@@ -30,7 +31,7 @@ void sys_yield(registers_t *regs) {
 }
 
 void sys_exit(registers_t *regs) {
-    LOG_INFO("Process has requested to exit with status: %d\n", regs->ebx);
+    LOG_INFO("Process has requested to exit with status: %d", regs->ebx);
     proc_terminate(proc_get_current());
     proc_scheduler_run(regs);
 }
@@ -46,22 +47,13 @@ void sys_pid(registers_t *regs) {
 }
 
 void sys_vfs_write(registers_t *regs) {
-    LOG_DEBUG("Entering VFS Write\n");
+    LOG_DEBUG("Entering VFS Write");
 
     kuint32_t fd = regs->ebx;
     const char* buf = (const char*)regs->ecx;
     size_t count = regs->edx;
 
-    LOG_DEBUG("SYSCALL_VFS_WRITE: fd=%d, buf=0x%x, count=%d\n", fd, (kuint32_t)buf, count);
-
-    // Dump first few bytes of the buffer for verification
-    if (count > 0) {
-        LOG_DEBUG("Buffer content (first 10 bytes): \n");
-        for (size_t i = 0; i < 10 && i < count; ++i) {
-            // Print hex value of each byte
-            LOG_DEBUG("0x%x \n", (kuint8_t)buf[i]);
-        }
-    }
+    LOG_DEBUG("SYSCALL_VFS_WRITE: fd=%d, buf=0x%x, count=%d", fd, (kuint32_t)buf, count);
 
     process_t* proc = proc_get_current();
     file_node_t* node = proc->open_files[fd];
@@ -70,6 +62,5 @@ void sys_vfs_write(registers_t *regs) {
     } else {
         regs->eax = -1;
     }
-
     return;
 }

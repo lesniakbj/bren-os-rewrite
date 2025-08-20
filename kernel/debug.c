@@ -8,7 +8,7 @@
 
 void test_proc_1() {
     while(1) {
-        LOG_DEBUG("A\n");
+        LOG_DEBUG("A");
         for(volatile int i = 0; i < 10000000; i++); // Delay loop
         // Yield to scheduler
         asm volatile("int $0x20"); // Trigger timer interrupt to yield
@@ -17,7 +17,7 @@ void test_proc_1() {
 
 void test_proc_2() {
     while(1) {
-        LOG_DEBUG("B\n");
+        LOG_DEBUG("B");
         for(volatile int i = 0; i < 10000000; i++); // Delay loop
         // Yield to scheduler
         asm volatile("int $0x20"); // Trigger timer interrupt to yield
@@ -25,47 +25,46 @@ void test_proc_2() {
 }
 
 void debug_proc_test() {
-    LOG_DEBUG("Initializing scheduler test...\n");
+    LOG_DEBUG("Initializing scheduler test...");
     if(proc_init() == 0) {
         proc_create(test_proc_1, true);
         proc_create(test_proc_2, true);
     }
-    LOG_DEBUG("Test processes created.\n");
+    LOG_DEBUG("Test processes created.");
 }
 
 void debug_time(cmos_time_t current_time) {
-
-    LOG_DEBUG("Current Time: %d/%d/%d %d:%d:%d\n",
+    LOG_DEBUG("Current Time: %d/%d/%d %d:%d:%d",
                             current_time.month,
                             current_time.day,
                             current_time.year,
                             current_time.hours,
                             current_time.minutes,
                             current_time.seconds);
-    LOG_DEBUG("Unix timestamp: %d\n", time_to_unix_seconds(&current_time));
+    LOG_DEBUG("Unix timestamp: %d", time_to_unix_seconds(&current_time));
 }
 
 void debug_pic() {
-    LOG_DEBUG("PIC Remapped.\n");
-    LOG_DEBUG("\tPIC Master IMR: 0x%x\n", pic_read_data_port(0x21));
-    LOG_DEBUG("\tPIC Slave IMR: 0x%x\n", pic_read_data_port(0xA1));
+    LOG_DEBUG("PIC Remapped.");
+    LOG_DEBUG("\tPIC Master IMR: 0x%x", pic_read_data_port(0x21));
+    LOG_DEBUG("\tPIC Slave IMR: 0x%x", pic_read_data_port(0xA1));
 }
 
 void debug_gdt() {
-    LOG_DEBUG("GDT initialized.\n");
-    LOG_DEBUG("\tgdt_ptr.limit: 0x%x\n", gdt_ptr.limit);
-    LOG_DEBUG("\tgdt_ptr.address: 0x%x\n", gdt_ptr.address);
-    LOG_DEBUG("\tsizeof(gdt_entries): %d bytes\n", sizeof(gdt_entries));
-    LOG_DEBUG("\tAddress of gdt_ptr: 0x%x\n", (kuint32_t)&gdt_ptr);
+    LOG_DEBUG("GDT initialized.");
+    LOG_DEBUG("\tgdt_ptr.limit: 0x%x", gdt_ptr.limit);
+    LOG_DEBUG("\tgdt_ptr.address: 0x%x", gdt_ptr.address);
+    LOG_DEBUG("\tsizeof(gdt_entries): %d bytes", sizeof(gdt_entries));
+    LOG_DEBUG("\tAddress of gdt_ptr: 0x%x", (kuint32_t)&gdt_ptr);
 
     for (kint16_t i = 0; i < 5; i++) {
         struct gdt_entry *entry = &gdt_entries[i];
         kuint32_t base = (entry->base_high << 24) | (entry->base_middle << 16) | entry->base_low;
         kuint32_t limit = ((entry->granularity & 0xF0) << 12) | entry->limit_low;
 
-        LOG_DEBUG("\tGDT Entry %d:\n", i);
-        LOG_DEBUG("\t\tBase: 0x%x, Limit: 0x%x\n", base, limit);
-        LOG_DEBUG("\t\tAccess Byte: 0x%x (Present: %d, DPL: %d, Type: %d, Executable: %d, DC: %d, RW: %d, Accessed: %d)\n",
+        LOG_DEBUG("\tGDT Entry %d:", i);
+        LOG_DEBUG("\t\tBase: 0x%x, Limit: 0x%x", base, limit);
+        LOG_DEBUG("\t\tAccess Byte: 0x%x (Present: %d, DPL: %d, Type: %d, Executable: %d, DC: %d, RW: %d, Accessed: %d)",
                 entry->access,
                 (entry->access >> 7) & 0x1, // Present bit
                 (entry->access >> 5) & 0x3, // DPL (Descriptor Privilege Level)
@@ -74,7 +73,7 @@ void debug_gdt() {
                 (entry->access >> 2) & 0x1, // Direction/Conforming (data: expand-down/normal, code: conforming/non-conforming)
                 (entry->access >> 1) & 0x1, // Readable/Writable (code: readable, data: writable)
                 entry->access & 0x1);       // Accessed bit
-        LOG_DEBUG("\t\tGranularity Byte: 0x%x (Granularity: %d, Size: %d, Long Mode: %d)\n",
+        LOG_DEBUG("\t\tGranularity Byte: 0x%x (Granularity: %d, Size: %d, Long Mode: %d)",
                 entry->granularity,
                 (entry->granularity >> 7) & 0x1, // Granularity (0=byte, 1=4KB page)
                 (entry->granularity >> 6) & 0x1, // Size (0=16-bit, 1=32-bit)
@@ -83,11 +82,11 @@ void debug_gdt() {
 }
 
 void debug_idt() {
-    LOG_DEBUG("IDT initialized.\n");
-    LOG_DEBUG("\tidt_ptr.limit: 0x%x\n", idt_ptr.limit);
-    LOG_DEBUG("\tidt_ptr.base: 0x%x\n", idt_ptr.base);
-    LOG_DEBUG("\tsizeof(idt_entries): %d bytes\n", sizeof(idt_entries));
-    LOG_DEBUG("\tAddress of idt_ptr: 0x%x\n", (kuint32_t)&idt_ptr);
+    LOG_DEBUG("IDT initialized.");
+    LOG_DEBUG("\tidt_ptr.limit: 0x%x", idt_ptr.limit);
+    LOG_DEBUG("\tidt_ptr.base: 0x%x", idt_ptr.base);
+    LOG_DEBUG("\tsizeof(idt_entries): %d bytes", sizeof(idt_entries));
+    LOG_DEBUG("\tAddress of idt_ptr: 0x%x", (kuint32_t)&idt_ptr);
 }
 
 void debug_multiboot_header(multiboot_info_t *mbi) {

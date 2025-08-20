@@ -13,14 +13,14 @@ void flush_tlb_single(kuint32_t virtual_addr);
 kuint32_t read_cr2();
 
 vmm_init_status_t vmm_init(multiboot_info_t* mbi) {
-    LOG_DEBUG("Setting up VMM...\n");
+    LOG_DEBUG("Setting up VMM...");
 
     // Allocate frames for the page directory and one page table
     page_directory = (pde_t*)pmm_alloc_block();
     first_page_table = (pte_t*)pmm_alloc_block();
 
     if (!page_directory || !first_page_table) {
-        LOG_ERR("VMM Error: Failed to allocate frames for paging structures.\n");
+        LOG_ERR("VMM Error: Failed to allocate frames for paging structures.");
         return;
     }
 
@@ -44,7 +44,7 @@ vmm_init_status_t vmm_init(multiboot_info_t* mbi) {
         physical_addr_t framebuffer_size = mbi->framebuffer_height * mbi->framebuffer_pitch;
         physical_addr_t framebuffer_end = framebuffer_start + framebuffer_size;
         
-        LOG_DEBUG("Mapping framebuffer: 0x%x - 0x%x\n", framebuffer_start, framebuffer_end);
+        LOG_DEBUG("Mapping framebuffer: 0x%x - 0x%x", framebuffer_start, framebuffer_end);
         
         // Map each 4KB page of the framebuffer
         for (physical_addr_t addr = framebuffer_start; addr < framebuffer_end; addr += PAGE_SIZE) {
@@ -58,7 +58,7 @@ vmm_init_status_t vmm_init(multiboot_info_t* mbi) {
     // Enable paging by setting the PG bit in the CR0 register
     enable_paging();
 
-    LOG_DEBUG("Paging enabled.\n");
+    LOG_DEBUG("Paging enabled.");
 }
 
 void vmm_identity_map_page(physical_addr_t physical_addr) {
@@ -77,7 +77,7 @@ void vmm_identity_map_page(physical_addr_t physical_addr) {
     if ((*pde & PDE_PRESENT) == 0) {
         page_table = (pte_t*)pmm_alloc_block();
         if (!page_table) {
-            LOG_DEBUG("VMM Error: Out of memory creating new page table!\n");
+            LOG_DEBUG("VMM Error: Out of memory creating new page table!");
             return;
         }
         memset(page_table, 0, PAGE_SIZE);
@@ -116,7 +116,7 @@ void vmm_map_page(virtual_addr_t virtual_addr, physical_addr_t physical_addr, ku
     if (!(*page_dir & PDE_PRESENT)) {
         page_table = (pte_t*)pmm_alloc_block();
         if(!page_table) {
-            LOG_ERR("VMM Error: Out of memory creating new page table!\n");
+            LOG_ERR("VMM Error: Out of memory creating new page table!");
             return;
         }
         memset(page_table, 0, PAGE_SIZE);
@@ -147,7 +147,7 @@ void vmm_unmap_page(virtual_addr_t virtual_addr) {
 
     // Check if the page table is present
     if(!(*page_dir & PDE_PRESENT)) {
-        LOG_ERR("VMM Error: No page found to free, returning.\n");
+        LOG_ERR("VMM Error: No page found to free, returning.");
         return;
     }
 
@@ -170,14 +170,14 @@ physical_addr_t vmm_get_physical_addr(virtual_addr_t virtual_addr) {
     // Check if the page table is present
     pde_t* page_dir = &page_directory[page_directory_idx];
     if(!(*page_dir & PDE_PRESENT)) {
-        LOG_ERR("VMM Error: Invalid address!\n");
+        LOG_ERR("VMM Error: Invalid address!");
         return 0;
     }
     
     // Get the virtual address of the page table and if its present
     pte_t* page_table = (pte_t*) (*page_dir & PDE_FRAME);
     if(!(page_table[page_table_idx] & PTE_PRESENT)) {
-        LOG_ERR("VMM Error: Invalid address!\n");
+        LOG_ERR("VMM Error: Invalid address!");
         return 0;
     }
 
@@ -188,11 +188,29 @@ physical_addr_t vmm_get_physical_addr(virtual_addr_t virtual_addr) {
     return addr | offset;
 }
 
+// Creates a new user page directory, identity-maps the kernel
+pde_t* vmm_create_user_directory() {
+    // Allocate one page for the new page directory
+    pde_t* new_pd = (pde_t*)pmm_alloc_block();
+    if (!new_pd) {
+        LOG_ERR("VMM: Failed to allocate page directory!");
+        return NULL;
+    }
+    memset(new_pd, 0, PAGE_SIZE);
+
+    // Copy the kernel mappings from the global page_directory (higher-half)
+    for (int i = 768; i < 1024; i++) {
+        new_pd[i] = page_directory[i];
+    }
+
+    return new_pd;
+}
+
 pde_t* vmm_get_kernel_directory() {
     return page_directory;
 }
 
-void page_fault_handler(struct registers *regs){
+void page_fault_handler(registers_t *regs){
     kuint32_t faulting_address = read_cr2();
 
     // The error code gives us details about the fault.
@@ -202,16 +220,16 @@ void page_fault_handler(struct registers *regs){
     int reserved = regs->error_code & 0x8;
     int id = regs->error_code & 0x10;
 
-    LOG_ERR("--- PAGE FAULT ---\n");
-    LOG_ERR("Faulting Address: 0x%x\n", faulting_address);
-    LOG_ERR("Reason: %s, %s, %s, %s, %s\n",
+    LOG_ERR("--- PAGE FAULT ---");
+    LOG_ERR("Faulting Address: 0x%x", faulting_address);
+    LOG_ERR("Reason: %s, %s, %s, %s, %s",
         present ? "Present" : "Not Present",
         rw ? "Write" : "Read",
         us ? "User-mode" : "Kernel-mode",
         reserved ? "Reserved Bit Set" : "",
         id ? "Instruction Fetch" : "");
-    LOG_ERR("EIP: 0x%x\n", regs->eip);
-    LOG_ERR("System Halted.\n");
+    LOG_ERR("EIP: 0x%x", regs->eip);
+    LOG_ERR("System Halted.");
     for(;;);
 }
 

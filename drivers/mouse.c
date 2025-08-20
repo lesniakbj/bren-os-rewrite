@@ -25,7 +25,7 @@ static void mouse_wait_signal() {
         }
         io_wait();
     }
-    LOG_WARN("mouse_wait_signal timeout!\n");
+    LOG_WARN("mouse_wait_signal timeout!");
 }
 
 // Waits for the PS/2 controller's output buffer to be full.
@@ -38,7 +38,7 @@ static void mouse_wait_data() {
         }
         io_wait();
     }
-    LOG_WARN("mouse_wait_data timeout!\n");
+    LOG_WARN("mouse_wait_data timeout!");
 }
 
 // Sends a command byte to the mouse device.
@@ -108,7 +108,7 @@ void mouse_handler(registers_t *regs) {
                 mouse_packet[0] = data;
                 mouse_cycle++;
             } else {
-                LOG_INFO("Mouse sync error, byte: 0x%x\n", data);
+                LOG_INFO("Mouse sync error, byte: 0x%x", data);
             }
             break;
         case 1:
@@ -173,14 +173,14 @@ void mouse_init(void) {
     mouse_write(MOUSE_DEFAULT_SETTINGS);
     kuint8_t ack = mouse_read();
     if (ack != ACK_SUCCESS) {
-        LOG_WARN("Error attempting to set default settings for mouse!\n");
+        LOG_WARN("Error attempting to set default settings for mouse!");
     }
 
     // Step 4: Enable packet streaming from the mouse.
     mouse_write(MOUSE_ENABLE_PACKET_STREAM);
     ack = mouse_read();
     if (ack != ACK_SUCCESS) {
-        LOG_WARN("Error attempting to set packet streaming settings for mouse!\n");
+        LOG_WARN("Error attempting to set packet streaming settings for mouse!");
     }
 
     // Enable mouse extended features... this is a very specific sequence of commands sent to the mouse
@@ -200,6 +200,6 @@ void mouse_init(void) {
             mouse_extended_buttons = true;
         }
         mouse_wheel_present = true;
-        LOG_INFO("Mouse scroll wheel detected.\n");
+        LOG_INFO("Mouse scroll wheel detected.");
     }
 }

@@ -1,7 +1,5 @@
-// drivers/text_mode_console.c
-
 #include <drivers/terminal.h>
-#include <drivers/text_mode_console.h> // Include the new header
+#include <drivers/text_mode_console.h>
 #include <kernel/multiboot.h>
 #include <drivers/screen.h>
 #include <arch/i386/io.h>
@@ -146,6 +144,7 @@ void text_mode_putchar(char c) {
     // --- Update Display ---
     scroll_offset = 0;
     text_mode_console_refresh(); // Refresh the VGA buffer
+
 }
 
 kint32_t text_mode_write(const char* data, size_t size) {

@@ -40,4 +40,4 @@ USER_BIN_DIR  = $(BUILD_DIR)/user/bin
 # --- QEMU ---
 QEMU                = qemu-system-i386
 QEMU_FLAGS          = -m 256M -serial stdio -machine q35,hpet=on
-QEMU_DEBUG_FLAGS    = -S -s # -S: freeze CPU at startup, -s: shorthand for -gdb tcp::1234
+QEMU_DEBUG_FLAGS    = -S -s -d int,cpu_reset,exec -D qemu.log -kernel $(BIN_DIR)/BrenOS.bin
