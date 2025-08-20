@@ -81,7 +81,7 @@ void kernel_main(kuint32_t magic, kuint32_t multiboot_addr) {
 
     // Create a test user mode program here
     create_user_process();
-    // create_user_process_syscall_exit();
+    create_user_process_syscall_exit();
 
     // Enable interrupts now that all handlers are registered.
     asm volatile("sti");

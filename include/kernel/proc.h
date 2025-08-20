@@ -3,11 +3,12 @@
 
 #define MAX_PROCESSES 1024
 
-#define STOPPED 0
-#define RUNNING 1
-#define KILLED  2
-#define PAUSED  3
-#define EXITED  4
+#define STOPPED     0
+#define RUNNING     1
+#define KILLED      2
+#define PAUSED      3
+#define EXITED      4
+#define FIRST_RUN   5
 
 #define MAX_OPEN_FILES 128   // Total number of file handles (io, drivers, etc) a process can have
 
@@ -15,6 +16,12 @@
 #include <arch/i386/interrupts.h>
 #include <arch/i386/vmm.h>
 #include <kernel/vfs.h>
+
+typedef enum {
+    KERNEL_PROC,
+    USER_PROC,
+    DAEMON
+} proc_type_t;
 
 typedef struct process {
     kuint32_t esp; /* Saved ESP */
@@ -25,6 +32,7 @@ typedef struct process {
     size_t kernel_stack_size;
     kuint32_t parent_proc_id;
     bool used;
+    proc_type_t proc_type;
     file_node_t* open_files[MAX_OPEN_FILES];
 } process_t;
 
@@ -37,6 +45,7 @@ process_t* proc_get_current();
 void proc_terminate(process_t* proc);
 
 void create_user_process();
+void create_user_process_syscall_exit();
 
 void proc_scheduler_run(registers_t *regs);
 

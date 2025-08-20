@@ -199,11 +199,35 @@ pde_t* vmm_create_user_directory() {
     memset(new_pd, 0, PAGE_SIZE);
 
     // Copy the kernel mappings from the global page_directory (higher-half)
-    for (int i = 768; i < 1024; i++) {
+    for (int i = 0; i < 1024; i++) {
         new_pd[i] = page_directory[i];
     }
 
     return new_pd;
+}
+
+void vmm_map_page_dir(pde_t* pd, virtual_addr_t virtual_addr, physical_addr_t physical_addr, kuint32_t flags) {
+    virtual_addr_t aligned_addr = virtual_addr & 0xFFFFF000;
+    kuint32_t page_directory_idx = aligned_addr >> 22;
+    kuint32_t page_table_idx = (aligned_addr >> 12) & 0x3FF;
+
+    pde_t* page_dir = &pd[page_directory_idx];
+    pte_t* page_table;
+
+    if (!(*page_dir & PDE_PRESENT)) {
+        page_table = (pte_t*)(pmm_alloc_block());
+        if (!page_table) {
+            LOG_ERR("VMM Error: Out of memory creating new page table!");
+            return;
+        }
+        memset(page_table, 0, PAGE_SIZE);
+        *page_dir = ((physical_addr_t)page_table) | PDE_PRESENT | PDE_READ_WRITE | (flags & PTE_USER);
+    } else {
+        page_table = (pte_t*)(((*page_dir & PDE_FRAME)));
+    }
+
+    page_table[page_table_idx] = physical_addr | flags | PTE_PRESENT;
+    flush_tlb_single(aligned_addr);
 }
 
 pde_t* vmm_get_kernel_directory() {

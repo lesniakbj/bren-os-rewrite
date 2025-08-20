@@ -31,8 +31,9 @@ void sys_yield(registers_t *regs) {
 }
 
 void sys_exit(registers_t *regs) {
-    LOG_INFO("Process has requested to exit with status: %d", regs->ebx);
-    proc_terminate(proc_get_current());
+    process_t* proc = proc_get_current();
+    LOG_INFO("Process %d has requested to exit with status: %d", proc->process_id, regs->ebx);
+    proc_terminate(proc);
     proc_scheduler_run(regs);
 }
 

@@ -121,4 +121,4 @@ gdb_debug:
 # Run QEMU with monitor
 monitor:
 	@echo "Running OS in QEMU with Monitoring enabled..."
-	@$(QEMU) -cdrom $(ISO_FILE) -m 256M -machine q35,hpet=on -monitor stdio
+	@$(QEMU) -cdrom $(ISO_FILE) -m 4G -machine q35,hpet=on -monitor stdio

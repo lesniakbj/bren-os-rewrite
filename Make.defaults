@@ -39,5 +39,5 @@ USER_BIN_DIR  = $(BUILD_DIR)/user/bin
 
 # --- QEMU ---
 QEMU                = qemu-system-i386
-QEMU_FLAGS          = -m 256M -serial stdio -machine q35,hpet=on
+QEMU_FLAGS          = -m 1024M -serial stdio -machine q35,hpet=on
 QEMU_DEBUG_FLAGS    = -S -s -d int,cpu_reset,exec -D qemu.log -kernel $(BIN_DIR)/BrenOS.bin

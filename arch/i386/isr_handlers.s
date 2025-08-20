@@ -131,3 +131,12 @@ context_switch:
 
     # Return to the new process
     iret
+
+# first_time_user_switch(new_esp)
+# Input: [esp+4] = new process stack pointer (already laid out for iret)
+.global first_time_user_switch
+first_time_user_switch:
+    cli                 # disable interrupts
+    mov eax, [esp+4]    # load new_esp argument
+    mov esp, eax        # switch to the kernel stack of user process
+    iret                # far return into user mode (stack already correct)

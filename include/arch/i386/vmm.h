@@ -29,6 +29,8 @@
 #define PDE_PAGE_SIZE   0x80        // 0 for 4KB, 1 for 4MB
 #define PDE_FRAME       0xFFFFF000
 
+#define KERNEL_PDE_START    (KERNEL_VIRTUAL_BASE >> 22)
+
 typedef kuint32_t pte_t;
 typedef kuint32_t pde_t;
 
@@ -43,6 +45,10 @@ void vmm_map_page(virtual_addr_t virtual_addr, physical_addr_t physical_addr, ku
 void vmm_unmap_page(virtual_addr_t virtual_addr);
 physical_addr_t vmm_get_physical_addr(virtual_addr_t virtual_addr);
 pde_t* vmm_get_kernel_directory();
+
+pde_t* vmm_create_user_directory();
+void vmm_map_page_dir(pde_t* pd, virtual_addr_t virtual_addr, physical_addr_t physical_addr, kuint32_t flags);
+
 void page_fault_handler(registers_t *regs);
 
 #endif //ARCH_I386_VMM_H
