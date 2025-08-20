@@ -1,5 +1,5 @@
 # BrenOS
-![Post-Initialization Text Mode](.github/img/post-init.png)
+![Initialization Process](.github/img/init.webm)
 
 ## Project Overview
 
