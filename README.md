@@ -1,5 +1,5 @@
 # BrenOS
-![Initialization Process](.github/img/init.webm)
+![Initialization Process](.github/img/init.webm.mp4)
 
 ## Project Overview
 
