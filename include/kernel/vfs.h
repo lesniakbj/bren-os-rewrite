@@ -12,6 +12,6 @@ typedef struct file {
 } file_node_t;
 
 void vfs_init();
-file_node_t* vfs_get_root_node();
+file_node_t* vfs_get_terminal_node();
 
 #endif

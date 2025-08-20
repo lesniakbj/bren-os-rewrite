@@ -16,10 +16,10 @@
 kuint16_t* vga_buffer;
 static kuint16_t back_buffer[VGA_WIDTH * VGA_HEIGHT];
 static char scrollback_buffer[TEXT_MODE_SCROLLBACK_ROWS][VGA_WIDTH];
-static int scrollback_head = 0;
-static int scroll_offset = 0;
-static int terminal_row;
-static int terminal_column;
+static kint32_t scrollback_head = 0;
+static kint32_t scroll_offset = 0;
+static kint32_t terminal_row;
+static kint32_t terminal_column;
 static kuint8_t terminal_color;
 static bool is_new_line = true;
 
@@ -31,7 +31,7 @@ static inline kuint16_t vga_entry(unsigned char uc, kuint8_t color) {
 	return (kuint16_t) uc | (kuint16_t) color << 8;
 }
 
-static void text_mode_update_cursor(void) {
+static void text_mode_update_cursor() {
 	kuint16_t pos = terminal_row * VGA_WIDTH + terminal_column;
 
 	outb(0x3D4, 0x0F);
@@ -40,28 +40,28 @@ static void text_mode_update_cursor(void) {
 	outb(0x3D5, (kuint8_t) ((pos >> 8) & 0xFF));
 }
 
-void text_mode_console_refresh(void) {
+void text_mode_console_refresh() {
     // 1. Draw scrollback content to back_buffer
-    for (int y = 0; y < VGA_HEIGHT; y++) {
-        int scrollback_row = (scrollback_head - scroll_offset - (VGA_HEIGHT - 1) + y + TEXT_MODE_SCROLLBACK_ROWS) % TEXT_MODE_SCROLLBACK_ROWS;
-        for (int x = 0; x < VGA_WIDTH; x++) {
-            const int index = y * VGA_WIDTH + x;
+    for (kint32_t y = 0; y < VGA_HEIGHT; y++) {
+        kint32_t scrollback_row = (scrollback_head - scroll_offset - (VGA_HEIGHT - 1) + y + TEXT_MODE_SCROLLBACK_ROWS) % TEXT_MODE_SCROLLBACK_ROWS;
+        for (kint32_t x = 0; x < VGA_WIDTH; x++) {
+            const kint32_t index = y * VGA_WIDTH + x;
             back_buffer[index] = vga_entry(scrollback_buffer[scrollback_row][x], terminal_color);
         }
     }
 
     // 2. Draw clock on top of back_buffer
-    int clock_len = strlen(console_time_buffer);
-    int clock_start_col = 57;
-    for (int i = 0; i < clock_len; i++) {
+    kint32_t clock_len = strlen(console_time_buffer);
+    kint32_t clock_start_col = 57;
+    for (kint32_t i = 0; i < clock_len; i++) {
         if (clock_start_col + i < VGA_WIDTH) {
-            const int index = 0 * VGA_WIDTH + (clock_start_col + i);
+            const kint32_t index = 0 * VGA_WIDTH + (clock_start_col + i);
             back_buffer[index] = vga_entry(console_time_buffer[i], console_clock_color);
         }
     }
 
     // 3. Copy only changed parts from back_buffer to vga_buffer
-    for (int i = 0; i < VGA_WIDTH * VGA_HEIGHT; i++) {
+    for (kint32_t i = 0; i < VGA_WIDTH * VGA_HEIGHT; i++) {
         if (back_buffer[i] != vga_buffer[i]) {
             vga_buffer[i] = back_buffer[i];
         }
@@ -71,7 +71,7 @@ void text_mode_console_refresh(void) {
     text_mode_update_cursor();
 }
 
-void text_mode_console_init(void) {
+void text_mode_console_init() {
 	terminal_row = VGA_HEIGHT - 1;
 	terminal_column = 0;
 	terminal_color = vga_entry_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK);
@@ -92,7 +92,7 @@ void text_mode_setcolor(vga_color_t fg, vga_color_t bg) {
 	terminal_color = vga_entry_color(fg, bg);
 }
 
-void text_mode_clear(void) {
+void text_mode_clear() {
     for (int i = 0; i < TEXT_MODE_SCROLLBACK_ROWS; i++) {
         for (int j = 0; j < VGA_WIDTH; j++) {
             scrollback_buffer[i][j] = ' ';
@@ -106,8 +106,6 @@ void text_mode_clear(void) {
 void text_mode_putchar(char c) {
     // --- Process the Character ---
     if (c == '\t') {
-        const int TAB_WIDTH = 4; // Define your desired tab width
-
         // Calculate the column of the next tab stop based on the absolute column
         // This ensures alignment to global tab stops (e.g., columns 0, 8, 16, 24, ...)
         int next_tab_stop = ((terminal_column / TAB_WIDTH) + 1) * TAB_WIDTH;
@@ -146,26 +144,25 @@ void text_mode_putchar(char c) {
     // --- End of Character Processing ---
 
     // --- Update Display ---
-    scroll_offset = 0; // Always show the latest output
+    scroll_offset = 0;
     text_mode_console_refresh(); // Refresh the VGA buffer
-    // --- End of Display Update ---
 }
 
-int text_mode_write(const char* data, size_t size) {
-	for (size_t i = 0; i < size; i++) {
-		text_mode_putchar(data[i]);
-	}
+kint32_t text_mode_write(const char* data, size_t size) {
+    for (size_t i = 0; i < size; i++) {
+        text_mode_putchar(data[i]);
+    }
     return size;
 }
 
 void text_mode_writestring(const char* data) {
-	int i = 0;
+	kint32_t i = 0;
 	while (data[i] != 0) {
 		text_mode_putchar(data[i++]);
 	}
 }
 
-void text_mode_scroll(int lines) {
+void text_mode_scroll(kint32_t lines) {
     scroll_offset += lines;
     if (scroll_offset < 0) {
         scroll_offset = 0;
@@ -176,16 +173,14 @@ void text_mode_scroll(int lines) {
     text_mode_console_refresh();
 }
 
-
-// --- NEW FUNCTION ---
-void text_mode_write_at(int row, int col, const char* str, int len, kuint8_t color) {
+void text_mode_write_at(kint32_t row, kint32_t col, const char* str, kint32_t len, kuint8_t color) {
     // Validate row and column
     if (row < 0 || row >= VGA_HEIGHT || col < 0 || col >= VGA_WIDTH) {
         return; // Invalid coordinates
     }
 
     // Determine the actual number of characters to write
-    int chars_to_write = 0;
+    kint32_t chars_to_write = 0;
     if (len < 0) {
         // Write until null terminator or end of line
         chars_to_write = 0;
@@ -198,11 +193,10 @@ void text_mode_write_at(int row, int col, const char* str, int len, kuint8_t col
     }
 
     // Write characters directly to both buffers to maintain sync
-    for (int i = 0; i < chars_to_write; i++) {
+    for (kint32_t i = 0; i < chars_to_write; i++) {
         kuint16_t entry = vga_entry(str[i], color);
-        int index = row * VGA_WIDTH + col + i;
+        kint32_t index = row * VGA_WIDTH + col + i;
         vga_buffer[index] = entry;
         back_buffer[index] = entry;
     }
 }
-// --- END NEW FUNCTION ---

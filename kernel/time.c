@@ -1,106 +1,31 @@
 #include <kernel/time.h>
-#include <drivers/pit.h>              // For pit_get_tick_count, pit_get_frequency
-#include <arch/i386/time.h>           // For time_to_unix_seconds
-#include <drivers/text_mode_console.h> // For text_mode_write_at
-#include <drivers/screen.h>           // For VGA color constants
-#include <libc/strings.h>              // For snprintf (might be needed for formatting, or we can do it manually)
+#include <drivers/pit.h>
+#include <drivers/text_mode_console.h>
+#include <drivers/screen.h>
+#include <drivers/pit.h>
+#include <arch/i386/time.h>
+#include <libc/strings.h>
+#include <libc/stdlib.h>
 
-// --- Global state for system time ---
-
-// Authoritative seconds counter, updated by the RTC interrupt.
+// Seconds counter, updated by the RTC interrupt
 volatile kuint64_t g_unix_seconds = 0;
-// Flag to check if system time is initialized
-static int system_time_initialized = 0;
+static kint32_t system_time_initialized = 0;
 
-// --- Add these definitions ---
+// Used to display time information on the terminal
 char console_time_buffer[32] = "Initializing...";
-kuint8_t console_clock_color = 0x0F; // White on black
-// ---
+kuint8_t console_clock_color = 0x0F;
 
-/**
- * @brief Initializes the system time based on the initial CMOS read.
- *
- * This should be called once during kernel initialization after time_init().
- *
- * @param initial_cmos_time Pointer to the CMOS_Time struct obtained from time_init().
- */
-void system_time_init(CMOS_Time *initial_cmos_time) {
-    if (initial_cmos_time == NULL) {
-        // Handle error or log
-        return;
-    }
-    g_unix_seconds = time_to_unix_seconds(initial_cmos_time);
-    system_time_initialized = 1;
-}
-
-/**
- * @brief Gets the current high-resolution system time.
- *
- * Calculates the current time based on the authoritative RTC seconds and
- * the sub-second precision of the PIT.
- *
- * @param seconds Pointer to store the current Unix timestamp (seconds).
- * @param nanoseconds Pointer to store the nanosecond remainder.
- */
-void get_current_time(kuint64_t *seconds, kuint64_t *nanoseconds) {
-    if (!system_time_initialized || seconds == NULL || nanoseconds == NULL) {
-        if (seconds) *seconds = 0;
-        if (nanoseconds) *nanoseconds = 0;
-        return;
-    }
-
-    // The authoritative second count comes from our RTC-updated global variable.
-    *seconds = g_unix_seconds;
-
-    // The nanosecond part is derived from the PIT's progress through the current second.
-    unsigned int tick_count = pit_get_tick_count();
-    unsigned int frequency = pit_get_frequency();
-
-    if (frequency == 0) {
-         *nanoseconds = 0;
-         return;
-    }
-
-    // Calculate total nanoseconds since boot according to the PIT
-    kuint64_t total_ns_from_pit = ((kuint64_t)tick_count * 1000000000ULL) / (kuint64_t)frequency;
-
-    // The remainder is the nanoseconds within the current second.
-    *nanoseconds = total_ns_from_pit % 1000000000ULL;
-}
-
-
-/**
- * @brief A simple structure to hold broken-down time components.
- */
-typedef struct {
-    int year;
-    int month;
-    int day;
-    int hour;
-    int minute;
-    int second;
-    int millisecond; // Derived from nanoseconds
-} time_components_t;
-
-/**
- * @brief Converts Unix time (seconds) to calendar components.
- *
- * @param unix_time The Unix timestamp in seconds.
- * @param tc Pointer to the time_components_t struct to fill.
- */
 static void unix_time_to_components(kuint64_t unix_time, time_components_t *tc) {
     if (tc == NULL) return;
 
     // Days in each month (non-leap year)
-    static const int days_in_month[] = { 0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
+    static const kint32_t days_in_month[] = { 0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
 
-    // Function to check if a year is a leap year
-    // Using a macro for simplicity and compatibility.
-    #define IS_LEAP_YEAR(y) (((y) % 4 == 0 && (y) % 100 != 0) || ((y) % 400 == 0))
-
+    // 86400s == 1 Day
     kuint64_t days_since_epoch = unix_time / 86400ULL;
     kuint64_t remaining_seconds = unix_time % 86400ULL;
 
+    // Calculate the hour/min/sec portion
     tc->hour = remaining_seconds / 3600;
     remaining_seconds %= 3600;
     tc->minute = remaining_seconds / 60;
@@ -111,10 +36,10 @@ static void unix_time_to_components(kuint64_t unix_time, time_components_t *tc) 
     tc->month = 1;
     tc->day = 1;
 
-    kuint64_t tmp_days = days_since_epoch;
     // Calculate the year
+    kuint64_t tmp_days = days_since_epoch;
     while (1) {
-        int days_in_year = IS_LEAP_YEAR(tc->year) ? 366 : 365;
+        kint32_t days_in_year = IS_LEAP_YEAR(tc->year) ? 366 : 365;
         if (tmp_days >= (kuint64_t)days_in_year) {
             tmp_days -= days_in_year;
             tc->year++;
@@ -124,11 +49,10 @@ static void unix_time_to_components(kuint64_t unix_time, time_components_t *tc) 
     }
 
     // Now tmp_days is the day of the year (0-based)
-    int day_of_year = tmp_days;
-
     // Calculate the month and day
+    kint32_t day_of_year = tmp_days;
     for (tc->month = 1; tc->month <= 12; tc->month++) {
-        int dim = days_in_month[tc->month];
+        kint32_t dim = days_in_month[tc->month];
         if (tc->month == 2 && IS_LEAP_YEAR(tc->year)) {
             dim = 29;
         }
@@ -143,105 +67,90 @@ static void unix_time_to_components(kuint64_t unix_time, time_components_t *tc) 
     if (tc->month < 1) tc->month = 1;
     if (tc->month > 12) tc->month = 12;
     if (tc->day < 1) tc->day = 1;
-    
-    #undef IS_LEAP_YEAR // Clean up the macro
 }
 
-/**
- * @brief A simple integer to string conversion function.
- * 
- * @param buffer The buffer to write the string to.
- * @param value The integer value to convert.
- * @param width The minimum width of the string (padded with leading zeros).
- */
-static void itoa_pad(char *buffer, int value, int width) {
-    // Handle negative numbers if needed, but for time components, they should be positive.
-    // For simplicity, assume positive.
-    char temp[32]; // Enough for 32-bit int
-    int i = 0;
-    
-    if (value == 0) {
-        temp[i++] = '0';
-    } else {
-        while (value > 0) {
-            temp[i++] = '0' + (value % 10);
-            value /= 10;
+static void format_and_pad(char* buffer, kint32_t value, kint32_t width) {
+    char temp_str[32];
+    itoa(temp_str, 'd', value);
+
+    int len = strlen(temp_str);
+    int padding = width - len;
+
+    // Add left-padding with zeros if the number is shorter than the width
+    if (padding > 0) {
+        for (int i = 0; i < padding; i++) {
+            *buffer++ = '0';
         }
     }
-    
-    // Pad with zeros if necessary
-    while (i < width) {
-        temp[i++] = '0';
-    }
-    
-    // Reverse the string
-    int len = i;
-    for (int j = 0; j < len; j++) {
-        buffer[j] = temp[len - 1 - j];
-    }
-    buffer[len] = '\0';
+
+    // Copy the number string itself
+    strcpy(buffer, temp_str);
 }
 
+void system_time_init(cmos_time_t *initial_cmos_time) {
+    if (initial_cmos_time == NULL) {
+        return;
+    }
+    g_unix_seconds = time_to_unix_seconds(initial_cmos_time);
+    system_time_initialized = 1;
+}
 
-/**
- * @brief Updates the console clock display.
- *
- * Displays time in YYYY-MM-DD HH:MM:SS.nnn format at a fixed terminal position.
- */
-void update_console_clock() {
-    if (!system_time_initialized) {
-        return; // Not initialized yet
+void get_current_time(kuint64_t *seconds, kuint64_t *nanoseconds) {
+    if (!system_time_initialized || seconds == NULL || nanoseconds == NULL) {
+        if (seconds) *seconds = 0;
+        if (nanoseconds) *nanoseconds = 0;
+        return;
     }
 
+    // The second count comes from our RTC-updated global variable
+    *seconds = g_unix_seconds;
+
+    // The nanosecond part is derived from the PIT's progress through the current second
+    kuint32_t tick_count = pit_get_tick_count();
+    kuint32_t frequency = pit_get_frequency();
+    if (frequency == 0) {
+         *nanoseconds = 0;
+         return;
+    }
+
+    // Calculate total nanoseconds since boot according to the PIT, he remainder is the nanoseconds within the current second.
+    kuint64_t total_ns_from_pit = ((kuint64_t)tick_count * 1000000000ULL) / (kuint64_t)frequency;
+    *nanoseconds = total_ns_from_pit % 1000000000ULL;
+}
+
+void update_console_clock() {
+    if (!system_time_initialized) {
+        return;
+    }
+
+    // Get the current seconds and nanoseconds from our system timers
     kuint64_t current_seconds, current_nanoseconds;
     get_current_time(&current_seconds, &current_nanoseconds);
 
+    // Convert those seconds/ns from Unix Time to components (Day/Month/Year)
     time_components_t tc;
     unix_time_to_components(current_seconds, &tc);
     tc.millisecond = current_nanoseconds / 1000000; // Convert nanoseconds to milliseconds
 
-    // --- Format the time string ---
-    // Using manual formatting to avoid snprintf dependency
-    char time_buffer[32]; // Should be sufficient for YYYY-MM-DD HH:MM:SS.nnn
-    int idx = 0;
-    
-    // Year (4 digits)
-    itoa_pad(&time_buffer[idx], tc.year, 4);
-    idx += 4;
-    time_buffer[idx++] = '-';
-    
-    // Month (2 digits)
-    itoa_pad(&time_buffer[idx], tc.month, 2);
-    idx += 2;
-    time_buffer[idx++] = '-';
-    
-    // Day (2 digits)
-    itoa_pad(&time_buffer[idx], tc.day, 2);
-    idx += 2;
-    time_buffer[idx++] = ' ';
-    
-    // Hour (2 digits)
-    itoa_pad(&time_buffer[idx], tc.hour, 2);
-    idx += 2;
-    time_buffer[idx++] = ':';
-    
-    // Minute (2 digits)
-    itoa_pad(&time_buffer[idx], tc.minute, 2);
-    idx += 2;
-    time_buffer[idx++] = ':';
-    
-    // Second (2 digits)
-    itoa_pad(&time_buffer[idx], tc.second, 2);
-    idx += 2;
-    time_buffer[idx++] = '.';
-    
-    // Millisecond (3 digits)
-    itoa_pad(&time_buffer[idx], tc.millisecond, 3);
-    idx += 3;
-    
-    time_buffer[idx] = '\0'; // Null terminate
+    // --- Format the time string --- 
+    char time_buffer[32];
+    char* p = time_buffer;
+    format_and_pad(p, tc.year, 4); p += 4;
+    *p++ = '-';
+    format_and_pad(p, tc.month, 2); p += 2;
+    *p++ = '-';
+    format_and_pad(p, tc.day, 2); p += 2;
+    *p++ = ' ';
+    format_and_pad(p, tc.hour, 2); p += 2;
+    *p++ = ':';
+    format_and_pad(p, tc.minute, 2); p += 2;
+    *p++ = ':';
+    format_and_pad(p, tc.second, 2); p += 2;
+    *p++ = '.';
+    format_and_pad(p, tc.millisecond, 3); p += 3;
+    *p = '\0';
 
-    // --- Update the shared buffer and color instead of writing to screen ---
+    // Update the shared buffer
     strcpy(console_time_buffer, time_buffer);
-    console_clock_color = 11 | (0 << 4); // Light Cyan on Black
+    console_clock_color = 11 | (0 << 4);
 }

@@ -36,7 +36,7 @@ void sys_exit(registers_t *regs) {
 }
 
 void sys_pid(registers_t *regs) {
-    LOG_INFO("Process has requested current PID: %d\n", regs->ebx);
+    LOG_INFO("Process has requested current PID");
     process_t *current_proc = proc_get_current();
     if (current_proc) {
         regs->eax = current_proc->process_id;
@@ -45,17 +45,31 @@ void sys_pid(registers_t *regs) {
     }
 }
 
-kint32_t sys_vfs_write(registers_t *regs) {
+void sys_vfs_write(registers_t *regs) {
+    LOG_DEBUG("Entering VFS Write\n");
+
     kuint32_t fd = regs->ebx;
-    const char* buf = regs->ecx;
+    const char* buf = (const char*)regs->ecx;
     size_t count = regs->edx;
+
+    LOG_DEBUG("SYSCALL_VFS_WRITE: fd=%d, buf=0x%x, count=%d\n", fd, (kuint32_t)buf, count);
+
+    // Dump first few bytes of the buffer for verification
+    if (count > 0) {
+        LOG_DEBUG("Buffer content (first 10 bytes): \n");
+        for (size_t i = 0; i < 10 && i < count; ++i) {
+            // Print hex value of each byte
+            LOG_DEBUG("0x%x \n", (kuint8_t)buf[i]);
+        }
+    }
 
     process_t* proc = proc_get_current();
     file_node_t* node = proc->open_files[fd];
-
     if(node && node->write) {
         regs->eax = node->write(buf, count);
     } else {
         regs->eax = -1;
     }
+
+    return;
 }

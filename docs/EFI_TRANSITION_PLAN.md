@@ -4,7 +4,7 @@ This document outlines the steps needed to transition your kernel from using GRU
 
 ## Current State Analysis
 
-Your current kernel uses:
+Thekernel uses:
 - i686 architecture (32-bit)
 - Multiboot specification for booting with GRUB
 - Manual GDT setup in the kernel

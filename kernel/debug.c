@@ -1,6 +1,8 @@
 #include <kernel/debug.h>
 #include <kernel/proc.h>
+#include <kernel/heap.h>
 #include <drivers/terminal.h>
+#include <arch/i386/gdt.h>
 
 #ifdef DEBUG
 
@@ -31,7 +33,7 @@ void debug_proc_test() {
     LOG_DEBUG("Test processes created.\n");
 }
 
-void debug_time(CMOS_Time current_time) {
+void debug_time(cmos_time_t current_time) {
 
     LOG_DEBUG("Current Time: %d/%d/%d %d:%d:%d\n",
                             current_time.month,

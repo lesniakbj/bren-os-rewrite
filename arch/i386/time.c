@@ -1,23 +1,31 @@
 #include <arch/i386/time.h>
 #include <arch/i386/io.h>
+#include <arch/i386/pic.h>
 #include <kernel/time.h>
 
-#define CURRENT_YEAR 2025
+kint32_t century_register = CENTURY_DATA_PORT;
+cmos_time_t current_time;
 
-int century_register = CENTURY_DATA_PORT;
+// Days in each month (non-leap year)
+static const kint32_t days_in_month[] = {0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
 
-CMOS_Time current_time;
-
-static int update_in_progress_flag() {
-      outb(CMOS_CMD_PORT, STATUS_REGISTER_A);
-      return (inb(CMOS_DATA_PORT) & 0x80);
+// Function to check if a year is a leap year
+static kint32_t is_leap_year(kint32_t year) {
+    return (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0);
 }
 
-CMOS_Time time_init() {
-    static CMOS_Time last_time;
+static kint32_t update_in_progress_flag() {
+    outb(CMOS_CMD_PORT, STATUS_REGISTER_A);
+    return (inb(CMOS_DATA_PORT) & 0x80);
+}
 
+cmos_time_t time_init() {
+    static cmos_time_t last_time;
+
+    // If there is an update to the current time, wait until it is complete
     while (update_in_progress_flag());
 
+    // Send commands to the CMOS port to get parts of the current time (YY/MM/DD HH:MM:SS)
     outb(CMOS_CMD_PORT, SECONDS_DATA_PORT);
     current_time.seconds = inb(CMOS_DATA_PORT);
     outb(CMOS_CMD_PORT, MINUTES_DATA_PORT);
@@ -31,11 +39,15 @@ CMOS_Time time_init() {
     outb(CMOS_CMD_PORT, YEAR_DATA_PORT);
     current_time.year = inb(CMOS_DATA_PORT);
 
+    // If we have a century register, grab the current century from the CMOS system, otherwise we will use our
+    // current year define in kernel/time.h
     if(century_register != 0) {
         outb(CMOS_CMD_PORT, century_register);
         current_time.century = inb(CMOS_DATA_PORT);
     }
 
+    // Poll the CMOS Clock until we get the same result twice in a row; this ensures that we are not reading the
+    // CMOS during an update
     do {
         last_time.seconds = current_time.seconds;
         last_time.minutes = current_time.minutes;
@@ -67,6 +79,8 @@ CMOS_Time time_init() {
                            (last_time.day != current_time.day) || (last_time.month != current_time.month) || (last_time.year != current_time.year) ||
                            (last_time.century != current_time.century));
 
+
+    // Perform BCD to Binary conversion for the time entries (if we need to do so). BCD has 4 byte nibbles per decimal.
     outb(CMOS_CMD_PORT, STATUS_REGISTER_B);
     kuint8_t registerB = inb(CMOS_DATA_PORT);
     if (!(registerB & 0x04)) {
@@ -103,22 +117,14 @@ CMOS_Time time_init() {
     return current_time;
 }
 
-// Days in each month (non-leap year)
-static const int days_in_month[] = {0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
-
-// Function to check if a year is a leap year
-static int is_leap_year(int year) {
-    return (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0);
-}
-
-kuint64_t time_to_unix_seconds(CMOS_Time* t) {
+kuint64_t time_to_unix_seconds(cmos_time_t* t) {
     kuint64_t total_days = 0;
-    int year = t->year;
-    int month = t->month;
-    int day = t->day;
-    int hours = t->hours;
-    int minutes = t->minutes;
-    int seconds = t->seconds;
+    kint32_t year = t->year;
+    kint32_t month = t->month;
+    kint32_t day = t->day;
+    kint32_t hours = t->hours;
+    kint32_t minutes = t->minutes;
+    kint32_t seconds = t->seconds;
 
     // Calculate days from years since 1970
     for (int y = 1970; y < year; y++) {
@@ -146,8 +152,6 @@ kuint64_t time_to_unix_seconds(CMOS_Time* t) {
 }
 
 void rtc_handler(registers_t* regs) {
-    (void)regs; // Unused
-
     // Increment the global seconds counter.
     g_unix_seconds++;
 
@@ -156,6 +160,6 @@ void rtc_handler(registers_t* regs) {
     inb(CMOS_DATA_PORT); // Discard the value
 
     // Send EOI to slave and master PICs.
-    outb(0xA0, 0x20); // Slave
-    outb(0x20, 0x20); // Master
+    outb(0xA0, PIC_EOI); // Slave
+    outb(0x20, PIC_EOI); // Master
 }

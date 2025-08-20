@@ -1,8 +1,7 @@
 #ifndef KERNEL_KERNEL_LAYOUT_H
 #define KERNEL_KERNEL_LAYOUT_H
 
-// Kernel memory layout constants
-
+// TODO: This will be the future layout for the higher-half kernel, once we get there...
 // Higher-half kernel virtual addresses
 #define KERNEL_VIRTUAL_BASE     0xC0000000  // 3GB - Base of higher-half kernel
 #define KERNEL_VIRTUAL_END      0xD0000000  // 3.5GB - End of kernel space

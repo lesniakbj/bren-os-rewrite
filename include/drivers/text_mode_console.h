@@ -1,24 +1,17 @@
-// drivers/text_mode_console.h
+#ifndef _TEXT_MODE_CONSOLE_H
+#define _TEXT_MODE_CONSOLE_H
 
-#ifndef DRIVERS_TEXT_MODE_CONSOLE_H
-#define DRIVERS_TEXT_MODE_CONSOLE_H
+#include <drivers/screen.h>
+#include <drivers/terminal.h>
 
-#include <libc/stdint.h>
+void text_mode_console_init();
+void text_mode_setcolor(vga_color_t fg, vga_color_t bg);
+void text_mode_putchar(char c);
+void text_mode_clear();
+kint32_t text_mode_write(const char* data, size_t size);
+void text_mode_writestring(const char* data);
+void text_mode_scroll(kint32_t lines);
+void text_mode_write_at(kint32_t row, kint32_t col, const char* str, kint32_t len, kuint8_t color);
+void text_mode_console_refresh(void);
 
-/**
- * @brief Writes a string directly to a specific position on the VGA text screen.
- *
- * This function bypasses the standard terminal scrolling and newline handling
- * to allow for in-place updates, such as a status line or clock.
- *
- * @param row The 0-based row index (0 to VGA_HEIGHT-1).
- * @param col The 0-based column index (0 to VGA_WIDTH-1).
- * @param str The null-terminated string to write.
- * @param len The number of characters to write from the string.
- *            If negative, the entire string (up to null terminator) is written,
- *            or until the end of the line (VGA_WIDTH) is reached.
- * @param color The VGA color attribute to use for the text.
- */
-void text_mode_write_at(int row, int col, const char* str, int len, kuint8_t color);
-
-#endif // DRIVERS_TEXT_MODE_CONSOLE_H
+#endif

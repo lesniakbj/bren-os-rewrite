@@ -2,27 +2,24 @@
 #include <arch/i386/io.h>
 
 void serial_init(kuint16_t port) {
-    // Disable interrupts
-    outb(port + SERIAL_INTERRUPT_REG, 0x00);
-    
-    // Enable DLAB (set baud rate divisor)
-    outb(port + SERIAL_LINE_REG, 0x80);
+    outb(port + SERIAL_INTERRUPT_REG, DISABLE_INTERRUPTS);
     
     // Set divisor to 1 (115200 baud)
+    outb(port + SERIAL_LINE_REG, ENABLE_BAUD_DIVISOR);
     outb(port + SERIAL_DATA_REG, 0x01);        // Low byte
     outb(port + SERIAL_INTERRUPT_REG, 0x00);   // High byte
     
     // 8 bits, no parity, one stop bit
-    outb(port + SERIAL_LINE_REG, 0x03);
+    outb(port + SERIAL_LINE_REG, SERIAL_LINE_DATA_BITS_8 | SERIAL_LINE_PARITY_NONE | SERIAL_LINE_STOP_BIT_1);
     
     // Enable FIFO, clear them, with 14-byte threshold
-    outb(port + SERIAL_FIFO_REG, 0xC7);
+    outb(port + SERIAL_FIFO_REG, SERIAL_FIFO_ENABLE | SERIAL_FIFO_CLEAR_RECEIVE | SERIAL_FIFO_CLEAR_TRANSMIT | SERIAL_FIFO_TRIGGER_LEVEL_14);
     
     // IRQs enabled, RTS/DSR set
-    outb(port + SERIAL_MODEM_REG, 0x0B);
+    outb(port + SERIAL_MODEM_REG, SERIAL_MODEM_DTR_ASSERT | SERIAL_MODEM_RTS_ASSERT | SERIAL_MODEM_IRQ_ENABLE);
     
     // Enable interrupts
-    outb(port + SERIAL_INTERRUPT_REG, 0x01);
+    outb(port + SERIAL_INTERRUPT_REG, ENABLE_INTERRUPTS);
 }
 
 kuint8_t serial_received(kuint16_t port) {

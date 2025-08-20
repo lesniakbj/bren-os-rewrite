@@ -1,12 +1,23 @@
 #include <libc/strings.h>
 
-generic_ptr memset(generic_ptr bufptr, int value, size_t size) {
+generic_ptr memset(generic_ptr bufptr, kint32_t value, size_t size) {
     kuint8_t* buf = (kuint8_t*) bufptr;
     for (size_t i = 0; i < size; i++) {
         buf[i] = (kuint8_t) value;
     }
     return bufptr;
 }
+
+generic_ptr memcpy(generic_ptr destination, const generic_ptr source, size_t num) {
+     kuint8_t *d = (kuint8_t *)destination;
+     const kuint8_t *s = (const kuint8_t *)source;
+
+     for (size_t i = 0; i < num; ++i) {
+         d[i] = s[i];
+     }
+     return destination;
+ }
+
 
 size_t strlen(const char *str) {
     size_t len = 0;
@@ -27,7 +38,7 @@ char* strcpy(char* dest, const char* src) {
     return original_dest;
 }
 
-int strncmp(const char *s1, const char *s2, size_t n) {
+kint32_t strncmp(const char *s1, const char *s2, size_t n) {
     // If n is 0, the strings are considered equal
     if (n == 0) {
         return 0;
@@ -58,7 +69,7 @@ int strncmp(const char *s1, const char *s2, size_t n) {
     return 0;
 }
 
-char* strrchr(const char* str, int c) {
+char* strrchr(const char* str, kint32_t c) {
     char* last_occurrence = NULL;
     // Cast c to unsigned char to match standard behavior for comparison
     unsigned char target = (unsigned char)c;

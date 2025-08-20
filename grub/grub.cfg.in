@@ -8,13 +8,13 @@ GRUB_HIDDEN_TIMEOUT=0
 GRUB_HIDDEN_TIMEOUT_QUIET=true
 insmod vbe
 
-menuentry "test-os" {
-	multiboot /boot/test-os.bin
+menuentry "BrenOS" {
+	multiboot /boot/@@KERNEL_BIN@@
     set gfxpayload=1920x1080x32
     set gfxpayload=keep
 }
 
-menuentry "test-os-framebuffer" {
-	multiboot /boot/test-os.bin
+menuentry "BrenOS - VGA Framebuffer" {
+	multiboot /boot/@@KERNEL_BIN@@
     set gfxpayload=1920x1080x32
 }

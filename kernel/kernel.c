@@ -1,10 +1,12 @@
 #include <kernel/kernel.h>
 #include <kernel/multiboot.h>
-#include <kernel/acpi.h>
 #include <kernel/heap.h>
 #include <kernel/log.h>
 #include <kernel/debug.h>
 #include <kernel/syscall.h>
+#include <kernel/time.h>
+#include <kernel/vfs.h>
+#include <kernel/proc.h>
 #include <arch/i386/idt.h>
 #include <arch/i386/gdt.h>
 #include <arch/i386/pic.h>
@@ -12,8 +14,6 @@
 #include <arch/i386/vmm.h>
 #include <arch/i386/pmm.h>
 #include <arch/i386/time.h>
-#include <drivers/pci.h>
-#include <drivers/hpet.h>
 #include <drivers/pit.h>
 #include <drivers/screen.h>
 #include <drivers/serial.h>
@@ -29,7 +29,7 @@ void mouse_proc();
 void kernel_main(kuint32_t magic, kuint32_t multiboot_addr) {
     multiboot_info_t *mbi = (multiboot_info_t *) multiboot_addr;
 
-    // Phase 1: Core system initialization (no dependencies)
+    // Phase 1: Core system initialization (no dependencies other than the MBI)
     log_init(mbi);
     if(magic != MULTIBOOT_BOOTLOADER_MAGIC) {
         LOG_ERR("Invalid magic number: 0x%x\n", magic);
@@ -45,26 +45,18 @@ void kernel_main(kuint32_t magic, kuint32_t multiboot_addr) {
     vmm_init_status_t vmm_status = vmm_init(mbi);
     heap_init(HEAP_VIRTUAL_START, HEAP_SIZE);
 
-    // Phase 3: Subsystems and drivers
-    CMOS_Time current_time = time_init();
-    pci_init();
-    acpi_init();
+    //TODO: remove
+    (void)pmm_status;
+    (void)vmm_status;
 
-    // Initialize a timer (HPET or PIT)
-    bool timer_initialized = false;
-    if (hpet_init() == 0) {
-        timer_initialized = true;
-    } else {
-        if (pit_init(1000) == 0) {
-            timer_initialized = true;
-            register_interrupt_handler(0x20, pit_handler);
-        } else {
-            LOG_ERR("FATAL: No timer available!\n");
-            return; // Halt if no timer
-        }
-    }
-    if (timer_initialized) {
+    // Phase 3: Subsystems and drivers and timers
+    cmos_time_t current_time = time_init();
+    if (pit_init(1000) == 0) {
+        register_interrupt_handler(0x20, pit_handler);
         system_time_init(&current_time);
+    } else {
+        LOG_ERR("FATAL: No timer available!\n");
+        return; // Halt if no timer
     }
 
     // Register interrupt handlers BEFORE enabling interrupts.
@@ -78,32 +70,32 @@ void kernel_main(kuint32_t magic, kuint32_t multiboot_addr) {
     // Initialize the vfs so it can be used by Procs
     vfs_init();
 
-    // Initialize the process scheduler
+    // Initialize the process scheduler, proc 0, etc.
     proc_init();
 
     // Create the driver processes
-    proc_create(keyboard_proc);
-    proc_create(mouse_proc);
+    proc_create(keyboard_proc, false);
+    proc_create(mouse_proc, false);
 
     // Create a test user mode program here
-    create_user_process();
+    // create_user_process();
 
     // Enable interrupts now that all handlers are registered.
-    enable_interrupts();
+    asm volatile("sti");
 
     // The kernel's main thread now becomes the idle task.
-    // It will halt until the next interrupt, saving CPU.
     // All other work is done by scheduled processes or interrupt handlers.
     while(1) {
         text_mode_console_refresh();
+        // vfs_write(1, "Hello from proc 0\n", 19);
         asm volatile("hlt");
     }
 }
 
 void keyboard_proc() {
-    // --- Initialization ---
     // This is a critical section. Disable interrupts to ensure that the
     // keyboard controller initialization sequence is not interrupted.
+    // The are already disabled... but lets be really sure...
     asm volatile("cli");
     keyboard_init();
     // Drain keyboard buffer of any stale data.
@@ -128,7 +120,7 @@ void keyboard_proc() {
             }
         }
 
-        // Voluntarily give up the CPU to the scheduler.
+        // Voluntarily give up the CPU to the scheduler... by exiting...
         kuint32_t id = proc_pid();
         LOG_INFO("Voluntarily exiting process ID: %d\n", id);
         vfs_write(1, "hello before exit\n", 19);
@@ -137,9 +129,9 @@ void keyboard_proc() {
 }
 
 void mouse_proc() {
-    // --- Initialization ---
     // This is a critical section. Disable interrupts to ensure that the
     // mouse controller initialization sequence is not interrupted.
+    // The are already disabled... but lets be really sure...
     asm volatile("cli");
     mouse_init();
     asm volatile("sti");
@@ -150,7 +142,35 @@ void mouse_proc() {
     mouse_event_t mouse_event;
     while(1) {
         if(mouse_poll(&mouse_event)) {
-            LOG_INFO("Mouse Event: buttons=%x, x=%d, y=%d\n", mouse_event.buttons_pressed, mouse_event.x_delta, mouse_event.y_delta);
+            kint8_t scroll_z = 0;
+            bool b4 = false;
+            bool b5 = false;
+
+            // If it is an extended event or scroll we need to decompose the extra buttons
+            if(mouse_event.z_delta != 0) {
+                b4 = mouse_event.z_delta & 0x10;
+                b5 = mouse_event.z_delta & 0x20;
+                scroll_z = mouse_event.z_delta & 0x0F;
+                if (scroll_z > 7) {
+                    scroll_z -=16;
+                }
+            }
+
+            if(scroll_z != 0) {
+                terminal_scroll(-scroll_z);
+            }
+
+            if(b4) {
+                LOG_INFO("Mouse button 4 was pressed!\n");
+            }
+
+            if(b5) {
+                LOG_INFO("Mouse button 5 was pressed!\n");
+            }
+
+            if(mouse_event.buttons_pressed & 0x01) {
+                LOG_INFO("Mouse button left was pressed!\n");
+            }
         }
         // Voluntarily give up the CPU to the scheduler.
         proc_yield();

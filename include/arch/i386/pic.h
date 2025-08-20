@@ -13,10 +13,12 @@
 #define ICW1_INIT 0x10
 #define ICW4_8086 0x01
 
+#define PIC_EOI 0x20
+
 void pic_remap(kuint32_t offset1, kuint32_t offset2);
 
 kuint8_t pic_read_data_port(kuint16_t port);
-kuint8_t pic_read_irr(void);
-kuint8_t pic_read_isr(void);
+kuint16_t pic_read_irr();
+kuint16_t pic_read_isr();
 
 #endif

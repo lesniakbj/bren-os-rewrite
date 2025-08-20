@@ -5,6 +5,12 @@
 #include <kernel/multiboot.h>
 #include <libc/stdint.h>
 
+#define SCROLLBACK_BUFFER_SIZE 1000
+
+#define TAB_WIDTH 4
+#define FONT_WIDTH 8
+#define FONT_HEIGHT 16
+
 typedef enum {
     VGA_COLOR_BLACK = 0,
     VGA_COLOR_BLUE = 1,
@@ -24,29 +30,27 @@ typedef enum {
     VGA_COLOR_WHITE = 15,
 } vga_color_t;
 
-#define FONT_WIDTH 8
-#define FONT_HEIGHT 16
-
 struct terminal_driver {
     void (*clear)(void);
     void (*putchar)(char c);
-    int (*write)(const char* data, size_t size);
+    kint32_t (*write)(const char* data, size_t size);
     void (*writestring)(const char* data);
     void (*setcolor)(vga_color_t fg, vga_color_t bg);
-    void (*scroll)(int lines);
+    void (*scroll)(kint32_t lines);
 };
 
-void terminal_initialize(multiboot_info_t* mbi);
-void terminal_clear(void);
-void terminal_putchar(char c);
-int terminal_write(const char* data, size_t size);
-void terminal_write_string(const char* data);
-void terminal_setcolor(vga_color_t fg, vga_color_t bg);
-void terminal_scroll(int lines);
-void terminal_write_stringf(const char* format, ...);
-void terminal_write_hex(kuint32_t n);
-
-void text_mode_console_init(void);
+void terminal_init(multiboot_info_t* mbi);
 void framebuffer_console_init(multiboot_info_t* mbi);
+void text_mode_console_init();
+
+void terminal_clear();
+
+void terminal_putchar(char c);
+kint32_t terminal_write(const char* data, size_t size);
+void terminal_write_string(const char* data);
+
+void terminal_setcolor(vga_color_t fg, vga_color_t bg);
+
+void terminal_scroll(kint32_t lines);
 
 #endif //TERMINAL_H

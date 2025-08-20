@@ -2,25 +2,29 @@
 #include <kernel/multiboot.h>
 #include <kernel/log.h>
 
+// Functions referencing the text-mode terminal
 extern void text_mode_console_init(void);
 extern void text_mode_clear(void);
 extern void text_mode_putchar(char c);
-extern int text_mode_write(const char* data, size_t size);
+extern kint32_t text_mode_write(const char* data, size_t size);
 extern void text_mode_writestring(const char* data);
 extern void text_mode_setcolor(vga_color_t fg, vga_color_t bg);
-extern void text_mode_scroll(int lines);
+extern void text_mode_scroll(kint32_t lines);
 
+// Functions referencing the framebuffer (GUI) terminal
 extern void framebuffer_console_init(multiboot_info_t* mbi);
 extern void framebuffer_clear(void);
 extern void framebuffer_putchar(char c);
-extern int framebuffer_write(const char* data, size_t size);
+extern kint32_t framebuffer_write(const char* data, size_t size);
 extern void framebuffer_writestring(const char* data);
 extern void framebuffer_setcolor(vga_color_t fg, vga_color_t bg);
-extern void framebuffer_scroll(int lines);
+extern void framebuffer_scroll(kint32_t lines);
 
+// The currently active terminal driver
 static struct terminal_driver active_driver;
 
-void terminal_initialize(multiboot_info_t* mbi) {
+// On init, check if we are using the framebuffer or not (GRUB will set this up for us)
+void terminal_init(multiboot_info_t* mbi) {
     if(CHECK_MULTIBOOT_FLAG(mbi->flags, 12)) {
         if(mbi->framebuffer_type == MULTIBOOT_FRAMEBUFFER_TYPE_RGB) {
             framebuffer_console_init(mbi);
@@ -51,8 +55,7 @@ void terminal_putchar(char c) {
     active_driver.putchar(c);
 }
 
-int terminal_write(const char* data, size_t size) {
-    LOG_DEBUG(data);
+kint32_t terminal_write(const char* data, size_t size) {
     return active_driver.write(data, size);
 }
 
@@ -64,62 +67,6 @@ void terminal_setcolor(vga_color_t fg, vga_color_t bg) {
     active_driver.setcolor(fg, bg);
 }
 
-void terminal_scroll(int lines) {
+void terminal_scroll(kint32_t lines) {
     active_driver.scroll(lines);
-}
-
-void terminal_write_stringf(const char* format, ...) {
-    va_list args;
-    va_start(args, format);
-
-    char buffer[256]; // A reasonably sized buffer for formatted output
-    kuint64_t i = 0;
-    while (*format != '\0' && i < sizeof(buffer) - 1) {
-        if (*format == '%') {
-            format++;
-            if (*format == 's') {
-                char* s = va_arg(args, char*);
-                while (*s != '\0' && i < sizeof(buffer) - 1) {
-                    buffer[i++] = *s++;
-                }
-            } else if (*format == 'd') {
-                kint32_t d = va_arg(args, kint32_t);
-                char num_buf[32];
-                itoa(num_buf, 'd', d);
-                char* s = num_buf;
-                while (*s != '\0' && i < sizeof(buffer) - 1) {
-                    buffer[i++] = *s++;
-                }
-            } else if (*format == 'x') {
-                kuint32_t x = va_arg(args, kuint32_t);
-                char num_buf[32];
-                itoa(num_buf, 'x', x);
-                char* s = num_buf;
-                while (*s != '\0' && i < sizeof(buffer) - 1) {
-                    buffer[i++] = *s++;
-                }
-            } else if (*format == '%') {
-                buffer[i++] = '%';
-            }
-        } else {
-            buffer[i++] = *format;
-        }
-        format++;
-    }
-    buffer[i] = '\0';
-
-    va_end(args);
-    terminal_write_string(buffer);
-}
-
-void terminal_write_hex(kuint32_t n) {
-    terminal_write_string("0x");
-    char buf[9];
-    char* hex_chars = "0123456789ABCDEF";
-    buf[8] = '\0';
-    for (int i = 7; i >= 0; i--) {
-        buf[i] = hex_chars[n & 0xF];
-        n >>= 4;
-    }
-    terminal_write_string(buf);
 }

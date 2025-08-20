@@ -1,10 +1,10 @@
 #include <libc/stdlib.h>
 
-void itoa(char* str_buf, int base, int value) {
+void itoa(char* str_buf, kint32_t base, kint32_t value) {
     char *p = str_buf;
     char *p1, *p2;
-    unsigned int ud = value;
-    int divisor = 10;
+    kuint32_t ud = value;
+    kint32_t divisor = 10;
 
     if (base == 'd' && value < 0) {
         *p++ = '-';
@@ -15,7 +15,7 @@ void itoa(char* str_buf, int base, int value) {
     }
 
     do {
-        int remainder = ud % divisor;
+        kint32_t remainder = ud % divisor;
         *p++ = (remainder < 10) ? remainder + '0' : remainder + 'a' - 10;
     } while (ud /= divisor);
 
@@ -31,13 +31,3 @@ void itoa(char* str_buf, int base, int value) {
         p2--;
     }
 }
-
- void* memcpy(void *destination, const void *source, size_t num) {
-     unsigned char *d = (unsigned char *)destination;
-     const unsigned char *s = (const unsigned char *)source;
-
-     for (size_t i = 0; i < num; ++i) {
-         d[i] = s[i];
-     }
-     return destination;
- }

@@ -1,13 +1,7 @@
 #ifndef KERNEL_PROC_H
 #define KERNEL_PROC_H
 
-#include <libc/stdint.h>
-#include <arch/i386/interrupts.h>
-#include <arch/i386/vmm.h>
-#include <kernel/vfs.h>
-
 #define MAX_PROCESSES 1024
-#define KERNEL_STACK_SIZE 4096
 
 #define STOPPED 0
 #define RUNNING 1
@@ -16,6 +10,11 @@
 #define EXITED  4
 
 #define MAX_OPEN_FILES 128   // Total number of file handles (io, drivers, etc) a process can have
+
+#include <libc/stdint.h>
+#include <arch/i386/interrupts.h>
+#include <arch/i386/vmm.h>
+#include <kernel/vfs.h>
 
 typedef struct process {
     kuint32_t esp; /* Saved ESP */
@@ -30,7 +29,6 @@ typedef struct process {
 } process_t;
 
 typedef void (*proc_entry_point_t)(void);
-
 
 int proc_init();
 

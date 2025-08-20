@@ -35,6 +35,35 @@
 #define SERIAL_BAUD_19200  6
 #define SERIAL_BAUD_9600   12
 
+// Commands
+#define DISABLE_INTERRUPTS 0x00
+#define ENABLE_INTERRUPTS 0x01
+#define ENABLE_BAUD_DIVISOR 0x80 // DLAB bit
+
+// Line Control Register Flags
+#define SERIAL_LINE_DATA_BITS_5   0x00
+#define SERIAL_LINE_DATA_BITS_6   0x01
+#define SERIAL_LINE_DATA_BITS_7   0x02
+#define SERIAL_LINE_DATA_BITS_8   0x03
+
+#define SERIAL_LINE_STOP_BIT_1    0x00
+#define SERIAL_LINE_STOP_BITS_2   0x04
+
+#define SERIAL_LINE_PARITY_NONE   0x00
+#define SERIAL_LINE_PARITY_ODD    0x08
+#define SERIAL_LINE_PARITY_EVEN   0x18
+
+// FIFO Control Register Flags
+#define SERIAL_FIFO_ENABLE              0x01
+#define SERIAL_FIFO_CLEAR_RECEIVE       0x02
+#define SERIAL_FIFO_CLEAR_TRANSMIT      0x04
+#define SERIAL_FIFO_TRIGGER_LEVEL_14    0xC0
+
+// Modem Control Register Flags
+#define SERIAL_MODEM_DTR_ASSERT         0x01
+#define SERIAL_MODEM_RTS_ASSERT         0x02
+#define SERIAL_MODEM_IRQ_ENABLE         0x08
+
 // Function prototypes
 void serial_init(kuint16_t port);
 void serial_write_char(kuint16_t port, char c);

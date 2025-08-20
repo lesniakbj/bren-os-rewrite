@@ -10,24 +10,24 @@ static virtual_addr_t heap_virtual_start = 0;
 static size_t heap_size = 0;
 
 void heap_init(virtual_addr_t start, size_t size) {
-    // STEP 1: Align the start address to a page boundary (use bitwise AND with 0xFFFFF000)
+    // Align the start address to a page boundary (use bitwise AND with 0xFFFFF000)
     virtual_addr_t aligned_addr = start & 0xFFFFF000;
 
-    // STEP 2: Ensure minimum heap size (use HEAP_MIN_SIZE constant)
+    // Ensure minimum heap size (use HEAP_MIN_SIZE constant)
     if(size < HEAP_MIN_SIZE) {
         size = HEAP_MIN_SIZE;
     }
     
-    // STEP 3: Align heap size to page boundary
+    // Align heap size to page boundary
     size_t aligned_size = (size + 0xFFF) & 0xFFFFF000;
 
-    // STEP 4: Map pages for the heap using vmm_map_page()
+    // Map pages for the heap using vmm_map_page()
     //   - Loop through each 4KB page
     //   - Allocate physical memory with pmm_alloc_block()
     //   - Map virtual to physical addresses with proper flags (PTE_PRESENT | PTE_READ_WRITE)
     for(kuint32_t offset = 0; offset < aligned_size; offset += PAGE_SIZE) {
         virtual_addr_t addr = aligned_addr + offset;
-        physical_addr_t block = pmm_alloc_block();
+        physical_addr_t block = (physical_addr_t)pmm_alloc_block();
         if(!block) {
             LOG_ERR("HEAP Error: Failed to allocate physical memory for heap\n");
             return;
@@ -35,12 +35,7 @@ void heap_init(virtual_addr_t start, size_t size) {
         vmm_map_page(addr, block, (PTE_PRESENT | PTE_READ_WRITE));
     }
     
-    // STEP 5: Initialize the first block that represents the entire heap
-    //   - Set size to heap_size
-    //   - Set next to NULL
-    //   - Set prev to NULL
-    //   - Set free to 1 (available)
-    //   - Set magic to HEAP_MAGIC
+    // Initialize the first block that represents the entire heap
     heap_start = (heap_block_t*)aligned_addr;
     heap_start->size = aligned_size;
     heap_start->next = NULL;
@@ -48,26 +43,26 @@ void heap_init(virtual_addr_t start, size_t size) {
     heap_start->free = 1;
     heap_start->magic = HEAP_MAGIC;
 
-    // STEP 6: Store heap_start, heap_virtual_start, and heap_size in global variables
+    // Store heap_start, heap_virtual_start, and heap_size in global variables
     heap_virtual_start = heap_start;
     heap_size = aligned_size;
     LOG_INFO("Heap initialized at 0x%x with size 0x%x\n", heap_virtual_start, heap_size);
 }
 
 generic_ptr kmalloc(size_t size) {
-    // STEP 1: Check if heap is initialized (heap_start != NULL)
+    // Check if heap is initialized (heap_start != NULL)
     if(heap_start == NULL) {
         LOG_ERR("HEAP Error: Heap not initialized, you must initialize the heap before allocating\n");
         return NULL;
     }
     
-    // STEP 2: Calculate total size needed (requested size + header size)
+    // Calculate total size needed (requested size + header size)
     size_t total_size = size + sizeof(heap_block_t);
     
-    // STEP 3: Align up total size to 4-byte boundary
+    // Align up total size to 4-byte boundary
     size_t aligned_size = (total_size + 3) & ~3;
     
-    // STEP 4: Find a free block using first-fit algorithm:
+    // Find a free block using first-fit algorithm:
     //   - Start at heap_start
     //   - Traverse the linked list of blocks heap_block_t
     //   - Look for a free block (free == 1) that's large enough
@@ -115,7 +110,7 @@ generic_ptr kmalloc(size_t size) {
         return NULL;
     }
 
-    // STEP 5: If found block is much larger than needed, split it:
+    // If found block is much larger than needed, split it:
     //  - Create a new block after the allocated space
     //  - Set its size, next pointer, free flag, and magic
     //  - Update the original block's size and next pointer
@@ -151,32 +146,32 @@ generic_ptr kmalloc(size_t size) {
     }
 
 
-    // STEP 6: Mark the found block as used (free = 0)
+    // Mark the found block as used (free = 0)
     cur_block->free = 0;
     
-    // STEP 7: Return pointer to memory after the header
+    // Return pointer to memory after the header
     return (generic_ptr)((virtual_addr_t)cur_block + sizeof(heap_block_t));
 }
 
 void kfree(generic_ptr ptr) {
-    // STEP 1: Handle NULL pointer (just return)
+    // Handle NULL pointer (just return)
     if (ptr == NULL) {
         return;
     }
 
-    // STEP 2: Get the block header by subtracting header size from ptr
+    // Get the block header by subtracting header size from ptr
     heap_block_t* block = (heap_block_t*)((virtual_addr_t)ptr - sizeof(heap_block_t));
 
-    // STEP 3: Validate the block using magic number
+    // Validate the block using magic number
     if (block->magic != HEAP_MAGIC) {
         LOG_ERR("HEAP Error: Invalid block header in kfree!\n");
         return;
     }
 
-    // STEP 4: Mark the block as free (free = 1)
+    // Mark the block as free (free = 1)
     block->free = 1;
     
-    // STEP 5: Coalesce with next block if it's free:
+    // Coalesce with next block if it's free:
     //   - Check if next block exists and is free
     //   - Check if blocks are contiguous in memory
     //   - If so, merge them by adding sizes and updating next pointer
@@ -191,7 +186,7 @@ void kfree(generic_ptr ptr) {
         }
     }
     
-    // STEP 6: Coalesce with previous block if it's free:
+    // Coalesce with previous block if it's free:
     //   - Check if previous block is free and contiguous
     //   - If so, merge them
     if (block->prev && block->prev->free) {
@@ -208,7 +203,7 @@ void kfree(generic_ptr ptr) {
 }
 
 generic_ptr krealloc(generic_ptr ptr, size_t size) {
-    // STEP 1: Handle special cases:
+    // Handle special cases:
     //   - If ptr is NULL, behave like kmalloc(size)
     //   - If size is 0, behave like kfree(ptr)
     if(ptr == NULL) {
@@ -218,22 +213,22 @@ generic_ptr krealloc(generic_ptr ptr, size_t size) {
         return NULL;
     }
     
-    // STEP 2: Get the block header and validate it
+    // Get the block header and validate it
     heap_block_t* block = (heap_block_t*)((virtual_addr_t)ptr - sizeof(heap_block_t));
     if(block->magic != HEAP_MAGIC) {
         LOG_ERR("HEAP Error: Invalid block header in krealloc!\n");
-        return;
+        return NULL;
     }
     
-    // STEP 3: Calculate current payload size (block size - header size)
+    // Calculate current payload size (block size - header size)
     size_t payload_size = block->size - sizeof(heap_block_t);
 
-    // STEP 4: If new size is smaller or equal to current size, return same pointer
+    // If new size is smaller or equal to current size, return same pointer
     if(payload_size <= block->size) {
         return ptr;
     }
     
-    // STEP 5: Otherwise:
+    // Otherwise:
     //   - Allocate new block with kmalloc(size)
     //   - Copy data from old block to new block using memcpy
     //   - Free old block with kfree
@@ -264,7 +259,7 @@ bool heap_expand(size_t additional_size) {
     // Map all the new pages
     for (size_t i = 0; i < expansion_size; i += PAGE_SIZE) {
         virtual_addr_t addr = current_heap_end + i;
-        physical_addr_t block = pmm_alloc_block();
+        physical_addr_t block = (physical_addr_t)pmm_alloc_block();
         if(!block) {
             LOG_ERR("HEAP Error: Failed to allocate physical memory for heap in expansion\n");
             return false;

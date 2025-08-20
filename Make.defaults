@@ -1,0 +1,43 @@
+# --- Project and Architecture ---
+PROJECT_NAME = BrenOS
+ARCH         = i386
+TARGET       = i686-elf
+
+# --- Toolchain ---
+TOOLCHAIN_DIR = .toolchain/cross
+CC            = $(TOOLCHAIN_DIR)/bin/$(TARGET)-gcc
+AS            = $(TOOLCHAIN_DIR)/bin/$(TARGET)-as
+LD            = $(TOOLCHAIN_DIR)/bin/$(TARGET)-ld
+
+# --- Build Directories ---
+BUILD_DIR = .toolchain/build
+OBJ_DIR   = $(BUILD_DIR)/obj
+ISO_DIR   = .toolchain/iso
+BIN_DIR   = $(BUILD_DIR)/bin
+
+# --- Kernel Flags ---
+# -Iinclude: Search for headers in the 'include' directory.
+# -std=gnu99: Use the C99 standard with GNU extensions.
+# -ffreestanding: The code is for a standalone environment, not a hosted one like Linux.
+# -nostdinc: Don't use the standard system include directories.
+# -O2: Optimization level 2.
+# -Wall -Wextra: Enable all standard and extra warnings.
+# -g: Generate debugging information.
+# -MMD -MP: Generate dependency files for header changes.
+# -msoft-float: Use software floating-point emulation.
+# -DDEBUG: Define the DEBUG macro.
+CFLAGS   = -Iinclude -std=gnu99 -ffreestanding -nostdinc -O2 -Wall -Wextra -g -MMD -MP -msoft-float -DDEBUG
+ASFLAGS  = -g
+LDFLAGS  = -T linker.ld -ffreestanding -O2 -nostdlib -lgcc
+
+# --- User Program Flags ---
+# User programs are compiled differently from the kernel.
+USER_CFLAGS   = -Iinclude -std=gnu99 -ffreestanding -O2 -Wall -Wextra -g
+USER_LDFLAGS  = -nostdlib -lgcc -T usr/user.ld
+USER_OBJ_DIR  = $(BUILD_DIR)/user/obj
+USER_BIN_DIR  = $(BUILD_DIR)/user/bin
+
+# --- QEMU ---
+QEMU                = qemu-system-i386
+QEMU_FLAGS          = -m 256M -serial stdio -machine q35,hpet=on
+QEMU_DEBUG_FLAGS    = -S -s # -S: freeze CPU at startup, -s: shorthand for -gdb tcp::1234

@@ -29,8 +29,7 @@ inl:
 
 .global io_wait
 io_wait:
-    # Port 0x80 is often used for I/O delays, as it's a "checkpoint" port
-    # used by the BIOS during POST. Writing to it causes a short delay.
+    # Port 0x80 is often used for I/O delays
     mov al, 0x01
     out 0x80, al
     ret

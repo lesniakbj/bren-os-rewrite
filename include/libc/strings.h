@@ -3,11 +3,11 @@
 
 #include <libc/stdint.h>
 
-generic_ptr memset(generic_ptr bufptr, int value, size_t size);
+generic_ptr memset(generic_ptr bufptr, kint32_t value, size_t size);
+generic_ptr memcpy(generic_ptr destination, const generic_ptr source, size_t num);
 
 size_t strlen(const char *str);
-int strncmp(const char *s1, const char *s2, size_t n);
+kint32_t strncmp(const char *s1, const char *s2, size_t n);
+char* strrchr(const char* str, kint32_t c);
 
-char* strrchr(const char* str, int c);
-
-#endif //LIB_STRINGS_H
+#endif

@@ -1,10 +1,6 @@
 #ifndef ARCH_I386_MEMORY_H
 #define ARCH_I386_MEMORY_H
 
-#include <kernel/multiboot.h>
-#include <libc/stdint.h>
-#include <libc/strings.h>
-
 // The size of a single physical memory block (page). 4KB is standard for x86.
 #define PMM_BLOCK_SIZE 4096
 #define BITS_PER_BYTE 8
@@ -23,30 +19,23 @@
 // Return value from pmm_find_first_free when no free blocks are found.
 #define PMM_NO_FREE_BLOCKS -1
 
+#include <kernel/multiboot.h>
+#include <libc/stdint.h>
+#include <libc/strings.h>
+
 // Structure to hold PMM initialization information for debugging.
 typedef struct {
     kuint32_t total_memory_kb;
     kuint32_t max_blocks;
-    kuint32_t bitmap_size;
-    physical_addr_t kernel_end;
+    size_t bitmap_size;
+    physical_addr_t kernel_start, kernel_end;
     physical_addr_t placement_address;
     kuint32_t used_blocks;
     bool error;
 } pmm_init_status_t;
 
-// Initializes the physical memory manager.
-// This function should be called once, early in the kernel startup sequence.
-// It uses the Multiboot information structure to determine available memory.
 pmm_init_status_t pmm_init(multiboot_info_t *mbi);
-
-// Allocates a single block (4KB) of physical memory.
-// Returns a pointer to the start of the allocated block.
-// Returns NULL if no free blocks are available.
 generic_ptr pmm_alloc_block();
-
-// Frees a previously allocated block of physical memory.
-// 'p' must be a pointer to the start of a block that was allocated
-// by pmm_alloc_block().
 void pmm_free_block(generic_ptr p);
 
 #endif // ARCH_I386_MEMORY_H

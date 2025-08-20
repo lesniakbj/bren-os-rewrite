@@ -10,7 +10,7 @@
 #include <arch/i386/pic.h>
 
 #ifdef DEBUG
-void debug_time(CMOS_Time current_time);
+void debug_time(cmos_time_t current_time);
 void debug_gdt();
 void debug_pic();
 void debug_idt();

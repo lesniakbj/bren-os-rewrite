@@ -9,9 +9,7 @@
 .set CHECKSUM, -(MAGIC + FLAGS)            /* checksum of above, to prove we are multiboot */
 
 /* 
-Declare the multiboot header based on the multiboot standard. 
-Done in its own section so that it can be forced into the first 8KiB of
-the Kernel file.
+Declare the multiboot header based on the multiboot standard.
 */
 .section .multiboot
 .align 4
@@ -25,20 +23,18 @@ the Kernel file.
 .long 32        // bpp
 
 /*
-It is up to the kernel to provide a stack, this establishes the bottom of the 
-stack section by creating a symbol for it, and then allocating 16KiB for the stack, 
-and then creating another symbol for the top of the stack (due to x86 stack growing
-downwards). Must be 16-byte aligned.
+It is up to the kernel to provide a stack. Must be 16-byte aligned.
 */
 .section .bss
 .align 16
 stack_bottom:
 .skip 16384 #16KiB
+.global stack_top
 stack_top:
 
 /* 
 Our linker script linker.ld specifies the _start as our entry point into the kernel;
-this is where the bootloader will jump to once the kernel has been correctly loaded. 
+this is where the bootloader will jump to once the kernel has been correctly loaded.
 Do not return from this function.
 */
 .section .text

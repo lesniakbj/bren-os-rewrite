@@ -16,13 +16,11 @@ vmm_init_status_t vmm_init(multiboot_info_t* mbi) {
     LOG_DEBUG("Setting up VMM...\n");
 
     // Allocate frames for the page directory and one page table
-    // These functions must return the physical address of the allocated frames.
     page_directory = (pde_t*)pmm_alloc_block();
     first_page_table = (pte_t*)pmm_alloc_block();
 
     if (!page_directory || !first_page_table) {
         LOG_ERR("VMM Error: Failed to allocate frames for paging structures.\n");
-        // This is a fatal error, normally we would halt or panic.
         return;
     }
 
@@ -63,16 +61,20 @@ vmm_init_status_t vmm_init(multiboot_info_t* mbi) {
     LOG_DEBUG("Paging enabled.\n");
 }
 
-void vmm_identity_map_page(kuint32_t physical_addr) {
-    kuint32_t page_addr = physical_addr & 0xFFFFF000; // Align to 4KB boundary
+void vmm_identity_map_page(physical_addr_t physical_addr) {
+    // Decompose the physical address into a Directory and Table index, address must be aligned first
+    physical_addr_t page_addr = physical_addr & 0xFFFFF000;   // Align to 4KB boundary
     kuint32_t pde_index = page_addr >> 22;
     kuint32_t pte_index = (page_addr >> 12) & 0x3FF;
 
     pde_t* pde = &page_directory[pde_index];
     pte_t* page_table;
 
+    // If the page table for this address range isn't present, we need to create one.
+    // This involves allocating a new physical page to serve as the page table,
+    // clearing it, and then updating the Page Directory Entry (PDE) to hold
+    // the physical address of this new page table.
     if ((*pde & PDE_PRESENT) == 0) {
-        // Page table not present, we need to create one
         page_table = (pte_t*)pmm_alloc_block();
         if (!page_table) {
             LOG_DEBUG("VMM Error: Out of memory creating new page table!\n");
@@ -97,37 +99,21 @@ void vmm_identity_map_page(kuint32_t physical_addr) {
     }
 }
 
-// --- STUBBED FUNCTIONS ---
-
 void vmm_map_page(virtual_addr_t virtual_addr, physical_addr_t physical_addr, kuint32_t flags) {
-    // STEP 1: Align the virtual address to a page boundary (4KB)
-    //         Use bitwise AND with 0xFFFFF000 to clear the lower 12 bits
+    // Decompose the physical address into a Directory and Table index, address must be aligned first
     virtual_addr_t aligned_addr = (virtual_addr & 0xFFFFF000);
-
-    // STEP 2: Calculate the page directory index (upper 10 bits)
-    //         Right shift the aligned address by 22 bits
     kuint32_t page_directory_idx = aligned_addr >> 22;
-
-    // STEP 3: Calculate the page table index (middle 10 bits)
-    //         Right shift the aligned address by 12 bits, then mask with 0x3FF
     kuint32_t page_table_idx = (aligned_addr >> 12) & 0x3FF;
     
-    // STEP 4: Get a pointer to the page directory entry (PDE)
-    //         Use the page directory index to access the correct entry in page_directory array
+    // Get a pointer to the page directory entry for this address
     pde_t* page_dir = &page_directory[page_directory_idx];
-
-    // STEP 5: Declare a pointer for the page table
     pte_t* page_table;
 
-    // STEP 6: Check if the page table is present
-    //         Check if the PDE has the PDE_PRESENT bit set
+    // If the page table for this address range isn't present, we need to create one.
+    // This involves allocating a new physical page to serve as the page table,
+    // clearing it, and then updating the Page Directory Entry (PDE) to hold
+    // the physical address of this new page table.
     if (!(*page_dir & PDE_PRESENT)) {
-        // STEP 7: If page table is not present:
-        //         a. Allocate a new page for the page table using pmm_alloc_block()
-        //         b. Check if allocation was successful (not NULL)
-        //         c. If allocation failed, print error message and return
-        //         d. Clear the newly allocated page table with memset()
-        //         e. Set the PDE to point to the new page table with proper flags (PDE_PRESENT, PDE_READ_WRITE)
         page_table = (pte_t*)pmm_alloc_block();
         if(!page_table) {
             LOG_ERR("VMM Error: Out of memory creating new page table!\n");
@@ -136,112 +122,69 @@ void vmm_map_page(virtual_addr_t virtual_addr, physical_addr_t physical_addr, ku
         memset(page_table, 0, PAGE_SIZE);
         *page_dir = (pde_t) page_table | PDE_PRESENT | PDE_READ_WRITE;
     } else {
-        // STEP 8: Get the virtual address of the page table
-        //         Extract the physical address from the PDE using PDE_FRAME mask
-        //         Cast to pte_t* (this works because low memory is identity mapped)
+        // Get the virtual address of the page table
         page_table = (pte_t*)(*page_dir & PDE_FRAME);
     }
 
-    // STEP 9: Create the page table entry (PTE) with the physical address and flags
-    //         Combine the physical address with the flags parameter and PTE_PRESENT
+    // Create the page table entry (PTE) with the physical address and flags
     pte_t table_entry = physical_addr | flags | PTE_PRESENT;
     
-    // STEP 10: Set the page table entry
-    //          Use the page table index to set the correct entry in the page table
+    // Set the page table entry
     page_table[page_table_idx] = table_entry;
     
-    // STEP 11: Invalidate the TLB entry for the virtual address
-    //          Call flush_tlb_single() with the aligned virtual address
+    // Invalidate the TLB entry for the virtual address
     flush_tlb_single(aligned_addr);
 }
 
 void vmm_unmap_page(virtual_addr_t virtual_addr) {
-    // STEP 1: Align the virtual address to a page boundary (4KB)
-    //         Use bitwise AND with 0xFFFFF000 to clear the lower 12 bits
-    virtual_addr_t aligned_addr = virtual_addr & 0xFFFFF000;
-
-    // STEP 2: Calculate the page directory index (upper 10 bits)
-    //         Right shift the aligned address by 22 bits
+    // Decompose the physical address into a Directory and Table index, address must be aligned first
+    virtual_addr_t aligned_addr = (virtual_addr & 0xFFFFF000);
     kuint32_t page_directory_idx = aligned_addr >> 22;
-
-    // STEP 3: Calculate the page table index (middle 10 bits)
-    //         Right shift the aligned address by 12 bits, then mask with 0x3FF
     kuint32_t page_table_idx = (aligned_addr >> 12) & 0x3FF;
-    
-    // STEP 4: Get a pointer to the page directory entry (PDE)
-    //         Use the page directory index to access the correct entry in page_directory array
+
+
     pde_t* page_dir = &page_directory[page_directory_idx];
 
-    // STEP 5: Check if the page table is present
-    //         Check if the PDE has the PDE_PRESENT bit set
-    //         If not present, return immediately (nothing to unmap)
+    // Check if the page table is present
     if(!(*page_dir & PDE_PRESENT)) {
         LOG_ERR("VMM Error: No page found to free, returning.\n");
         return;
     }
 
-    // STEP 6: Get the virtual address of the page table
-    //         Extract the physical address from the PDE using PDE_FRAME mask
-    //         Cast to pte_t* (this works because low memory is identity mapped)
+    // Get the virtual address of the page table so we can clear its entry
     pte_t* page_table = (pte_t*)(*page_dir & PDE_FRAME);
-
-    // STEP 7: Clear the page table entry
-    //         Set the page table entry at the calculated index to 0
     page_table[page_table_idx] = 0;
     
-    // STEP 8: Invalidate the TLB entry for the virtual address
-    //         Call flush_tlb_single() with the aligned virtual address
+    // Invalidate the TLB entry for the virtual address
     flush_tlb_single(aligned_addr);
 }
 
 physical_addr_t vmm_get_physical_addr(virtual_addr_t virtual_addr) {
-    // STEP 1: Save the offset within the page (lower 12 bits)
-    //         Use bitwise AND with 0xFFF to extract the offset
+    // Save the offset within the page (lower 12 bits), align the address and get the indexes into PDE/PTE
     kuint32_t offset = virtual_addr & 0xFFF;
-
-    // STEP 2: Align the virtual address to a page boundary (4KB)
-    //         Use bitwise AND with 0xFFFFF000 to clear the lower 12 bits
     kuint32_t aligned_addr = virtual_addr & 0xFFFFF000;
-
-    // STEP 3: Calculate the page directory index (upper 10 bits)
-    //         Right shift the aligned address by 22 bits
     kuint32_t page_directory_idx = aligned_addr >> 22;
-
-    // STEP 4: Calculate the page table index (middle 10 bits)
-    //         Right shift the aligned address by 12 bits, then mask with 0x3FF
     kuint32_t page_table_idx = (aligned_addr >> 12) & 0x3FF;
 
-    // STEP 5: Get a pointer to the page directory entry (PDE)
-    //         Use the page directory index to access the correct entry in page_directory array
-    pde_t* page_dir = &page_directory[page_directory_idx];
 
-    // STEP 6: Check if the page table is present
-    //         Check if the PDE has the PDE_PRESENT bit set
-    //         If not present, return 0 (invalid address)
+    // Check if the page table is present
+    pde_t* page_dir = &page_directory[page_directory_idx];
     if(!(*page_dir & PDE_PRESENT)) {
         LOG_ERR("VMM Error: Invalid address!\n");
         return 0;
     }
     
-    // STEP 7: Get the virtual address of the page table
-    //         Extract the physical address from the PDE using PDE_FRAME mask
-    //         Cast to pte_t* (this works because low memory is identity mapped)
+    // Get the virtual address of the page table and if its present
     pte_t* page_table = (pte_t*) (*page_dir & PDE_FRAME);
-
-    // STEP 8: Check if the page is present
-    //         Check if the PTE has the PTE_PRESENT bit set
-    //         If not present, return 0 (invalid address)
     if(!(page_table[page_table_idx] & PTE_PRESENT)) {
         LOG_ERR("VMM Error: Invalid address!\n");
         return 0;
     }
 
-    // STEP 9: Get the physical page address
-    //         Extract the physical address from the PTE using PTE_FRAME mask
+    // Get the physical page address
     physical_addr_t addr = page_table[page_table_idx] & PTE_FRAME;
 
-    // STEP 10: Combine the physical page address with the saved offset
-    //          Return the combination of physical page address and offset
+    // Combine the physical page address with the saved offset
     return addr | offset;
 }
 
@@ -268,8 +211,6 @@ void page_fault_handler(struct registers *regs){
         reserved ? "Reserved Bit Set" : "",
         id ? "Instruction Fetch" : "");
     LOG_ERR("EIP: 0x%x\n", regs->eip);
-
-    // Halt the system. In a real OS, we might try to recover or kill the process.
     LOG_ERR("System Halted.\n");
     for(;;);
 }

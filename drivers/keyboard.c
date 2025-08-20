@@ -1,8 +1,6 @@
 #include <drivers/keyboard.h>
 #include <arch/i386/io.h>
 
-#define KEYBOARD_BUFFER_SIZE 256
-
 static keyboard_event_t keyboard_buffer[KEYBOARD_BUFFER_SIZE];
 static kuint8_t keyboard_buffer_head = 0;
 static kuint8_t keyboard_buffer_tail = 0;
@@ -58,25 +56,27 @@ static const char scancode_map_set_1[0x59] = {
     /*0x53*/  0,   // keypad ./Delete
     /*0x54*/  0,   // keypad .
     /*0x57*/  0,   // (various international keys)
-    /*0x58*/  0,     // F11
-    /*0x59*/  0     // F12
+    /*0x58*/  0,   // F11
+    /*0x59*/  0    // F12
 };
 
-
-void keyboard_init(void) {
-    keyboard_buffer_head = 0;
-    keyboard_buffer_tail = 0;
-}
-
+// Helper to enqueue the next event for the keyboard, this uses the circular buffer and rotates around it
 static void enqueue_event(keyboard_event_t event) {
-    int next = (keyboard_buffer_head + 1) % KEYBOARD_BUFFER_SIZE;
+    kint32_t next = (keyboard_buffer_head + 1) % KEYBOARD_BUFFER_SIZE;
     if (next != keyboard_buffer_tail) {
         keyboard_buffer[keyboard_buffer_head] = event;
         keyboard_buffer_head = next;
     }
 }
 
+void keyboard_init() {
+    keyboard_buffer_head = 0;
+    keyboard_buffer_tail = 0;
+}
+
+// Function to return a keyboard event if there are any present
 bool keyboard_poll(keyboard_event_t *out_event) {
+    // We have events if the tail and head are not equal. Get the event and then move the tail
     if (keyboard_buffer_tail != keyboard_buffer_head) {
         *out_event = keyboard_buffer[keyboard_buffer_tail];
         keyboard_buffer_tail = (keyboard_buffer_tail + 1) % KEYBOARD_BUFFER_SIZE;
@@ -85,25 +85,25 @@ bool keyboard_poll(keyboard_event_t *out_event) {
     return false;
 }
 
-void keyboard_handler(struct registers *regs) {
+// Interrupt Keyboard handler
+void keyboard_handler(registers_t *regs) {
+    // Read and check the command scancode. If its an ACK or extended code, return.
     static bool is_extended = false;
-    kuint8_t scancode = inb(0x60);
+    kuint8_t scancode = inb(KEYBOARD_READ_PORT);
     keyboard_event_t event = {0};
-
-    if(scancode == 0xFA) {
-        // cmd ack
+    if(scancode == KEYBOARD_CMD_ACK_CODE) {
         return;
     }
-
-    if (scancode == 0xE0) {
+    if (scancode == KEYBOARD_EXTENDED_CODE) {
         is_extended = true;
         return;
     }
 
-    event.type = (scancode & 0x80) ? KEY_RELEASE : KEY_PRESS;
+    // ... Otherwise lets start to decode the scancode
+    event.type = (scancode & KEYBOARD_RELEASE_MASK) ? KEY_RELEASE : KEY_PRESS;
     event.scancode = scancode;
-
     if (is_extended) {
+        // Handle extended scancodes here (Key Up, Down, etc)
         switch (scancode) {
             case 0x48: event.special_key = KEY_UP_ARROW; break;
             case 0x50: event.special_key = KEY_DOWN_ARROW; break;
@@ -114,12 +114,12 @@ void keyboard_handler(struct registers *regs) {
         }
         is_extended = false;
     } else {
+        // Otherwise use our static scancode map to translate the scancodes
         size_t size = sizeof(scancode_map_set_1);
-
         if(event.type == KEY_PRESS && scancode < size) {
             event.ascii = scancode_map_set_1[scancode];
-        } else if(event.type == KEY_RELEASE && (size_t)(scancode - 0x80) < size) {
-            event.ascii = scancode_map_set_1[scancode - 0x80];
+        } else if(event.type == KEY_RELEASE && (size_t)(scancode - KEYBOARD_RELEASE_MASK) < size) {
+            event.ascii = scancode_map_set_1[scancode - KEYBOARD_RELEASE_MASK];
         }
 
         if (scancode == 0x01) {
@@ -127,6 +127,7 @@ void keyboard_handler(struct registers *regs) {
         }
     }
 
+    // Enqueue this event into the circular buffer
     enqueue_event(event);
     return;
 }

@@ -1,9 +1,12 @@
 #include <arch/i386/interrupts.h>
 #include <arch/i386/io.h>
+#include <arch/i386/pic.h>
 
 interrupt_handler_t interrupt_handlers[256];
 
 void register_interrupt_handler(kuint8_t n, interrupt_handler_t handler) {
+    // TODO: Make sure that we either aren't trashing other handlers, or chain
+    // multiple handlers if we try to re-regiser
     interrupt_handlers[n] = handler;
 }
 
@@ -16,9 +19,9 @@ void isr_handler_c(struct registers *regs) {
         // are responsible for their own EOI, so we don't send it for them here.
         if (regs->interrupt_number != 44 && regs->interrupt_number != 40) {
             if (regs->interrupt_number >= 40) {
-                outb(0xA0, 0x20); // EOI for slave PIC
+                outb(0xA0, PIC_EOI); // EOI for slave PIC
             }
-            outb(0x20, 0x20); // EOI for master PIC
+            outb(0x20, PIC_EOI); // EOI for master PIC
         }
     }
 
