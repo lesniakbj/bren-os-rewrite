@@ -37,7 +37,6 @@ void kernel_main(kuint32_t magic, kuint32_t multiboot_addr) {
         return;
     }
     gdt_init();
-    tss_init();
     idt_init();
     pic_remap(0x20, 0x28);
 
@@ -47,12 +46,13 @@ void kernel_main(kuint32_t magic, kuint32_t multiboot_addr) {
     heap_init(HEAP_VIRTUAL_START, HEAP_SIZE);
 
     //TODO: remove
-    (void)pmm_status;
-    (void)vmm_status;
+    //(void)pmm_status;
+    //(void)vmm_status;
 
     // Phase 3: Subsystems and drivers and timers
     cmos_time_t current_time = time_init();
     if (pit_init(1000) == 0) {
+        register_interrupt_handler(0x28, rtc_handler);
         register_interrupt_handler(0x20, pit_handler);
         system_time_init(&current_time);
     } else {
@@ -66,7 +66,6 @@ void kernel_main(kuint32_t magic, kuint32_t multiboot_addr) {
     register_interrupt_handler(0x0D, general_protection_fault_handler);
     register_interrupt_handler(0x21, keyboard_handler);
     register_interrupt_handler(0x2C, mouse_handler);
-    register_interrupt_handler(0x28, rtc_handler);
     register_interrupt_handler(0x80, syscall_handler);
 
     // Initialize the vfs so it can be used by Procs
@@ -80,8 +79,8 @@ void kernel_main(kuint32_t magic, kuint32_t multiboot_addr) {
     proc_create(mouse_proc, false);
 
     // Create a test user mode program here
-    create_user_process();
-    create_user_process_syscall_exit();
+    // create_user_process();
+    // create_user_process_syscall_exit();
 
     // Enable interrupts now that all handlers are registered.
     asm volatile("sti");

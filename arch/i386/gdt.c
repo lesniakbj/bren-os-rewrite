@@ -1,14 +1,15 @@
 #include <arch/i386/gdt.h>
 
 extern void tss_flush();
-extern void stack_top;
+extern kuint8_t stack_bottom[];
+extern kuint8_t stack_top[];
 
 gdt_entry_t gdt_entries[GDT_ENTRIES];
 gdt_ptr_t gdt_ptr;
 tss_entry_t tss_entry;
 
 void gdt_init(void) {
-    gdt_ptr.limit = (sizeof(struct gdt_entry) * GDT_ENTRIES) - 1;
+    gdt_ptr.limit = sizeof(gdt_entry_t) * GDT_ENTRIES - 1;
     gdt_ptr.address = (physical_addr_t)&gdt_entries;
 
     gdt_populate_gdt_entries(0, 0, 0, 0, 0);                // Null segment
@@ -18,11 +19,15 @@ void gdt_init(void) {
     gdt_populate_gdt_entries(4, 0, 0xFFFFFFFF, 0xF2, 0xCF); // User mode data segment
 
     // TSS Entry
+    memset(&tss_entry, 0, sizeof(tss_entry));
+    tss_entry.ss0  = 0x10; // kernel data segment
+    tss_entry.esp0 = (physical_addr_t)stack_top; // physical address for TSS stack
     physical_addr_t tss_base = (physical_addr_t)&tss_entry;
     size_t tss_limit = sizeof(tss_entry);
-    gdt_populate_gdt_entries(5, tss_base, tss_limit, 0x89, 0x00); // TSS
+    gdt_populate_gdt_entries(5, tss_base, tss_limit, 0x89, 0x00); // TSS descriptor
 
     gdt_load(&gdt_ptr);
+    tss_flush();
 }
 
 void gdt_populate_gdt_entries(kuint32_t idx, physical_addr_t segment_address, size_t limit, kuint8_t access, kuint8_t granularity) {
@@ -39,17 +44,13 @@ void gdt_populate_gdt_entries(kuint32_t idx, physical_addr_t segment_address, si
 
 void tss_init() {
     memset(&tss_entry, 0, sizeof(tss_entry));
-
-    // Set the kernel stack segment selector
-    tss_entry.ss0 = 0x10;                               // Kernel Data Segment selector
-    tss_entry.esp0 = (physical_addr_t)&stack_top;       // Kernel Stack Selector pointer
-
-    // Load the TSS selector (0x28) into the Task Register
+    tss_entry.ss0  = 0x10; // kernel data segment
+    tss_entry.esp0 = (physical_addr_t)stack_top;
     tss_flush();
 }
 
 // This function will be called by the scheduler on a context switch
 void tss_set_stack(kuint32_t kernel_ss, kuint32_t kernel_esp) {
-    tss_entry.ss0 = kernel_ss;
+    tss_entry.ss0  = kernel_ss;
     tss_entry.esp0 = kernel_esp;
 }

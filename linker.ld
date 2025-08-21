@@ -1,34 +1,43 @@
-ENTRY(_start)
+ENTRY (_start)
 
 SECTIONS
 {
-    . = 1M;
-    _kernel_start = .;
+        . = 0x00100000;
+	/* The kernel will live at 3GB + 1MB in the virtual address space, */
+	/* which will be mapped to 1MB in the physical address space. */
+	/* Note that we page-align the sections. */
 
-	.text BLOCK(4K) : ALIGN(4K)
+	_kernel_start = .;
+        .multiboot.data : {
+            *(.multiboot.data)
+        }
+
+       .multiboot.text : {
+           *(.multiboot.text)
+       }
+
+	. += 0xC0000000;
+	/* Add a symbol that indicates the start address of the kernel. */
+	.text ALIGN (4K) : AT (ADDR (.text) - 0xC0000000)
 	{
-		*(.multiboot)
 		*(.text)
 	}
-
-	/* Read-only data. */
-	.rodata BLOCK(4K) : ALIGN(4K)
+	.rodata ALIGN (4K) : AT (ADDR (.rodata) - 0xC0000000)
 	{
 		*(.rodata)
 	}
-
-	/* Read-write data (initialized) */
-	.data BLOCK(4K) : ALIGN(4K)
+	.data ALIGN (4K) : AT (ADDR (.data) - 0xC0000000)
 	{
 		*(.data)
 	}
-
-	/* Read-write data (uninitialized) and stack */
-	.bss BLOCK(4K) : ALIGN(4K)
+	.bss ALIGN (4K) : AT (ADDR (.bss) - 0xC0000000)
 	{
 		*(COMMON)
 		*(.bss)
+		*(.bootstrap_stack)
 	}
-
-    _kernel_end = .;
+	/* Add a symbol that indicates the end address of the kernel. */
+	_kernel_end = .;
+    _kernel_start_phys = _kernel_start - 0xC0000000 + 0x00100000;
+    _kernel_end_phys   = _kernel_end   - 0xC0000000 + 0x00100000;
 }

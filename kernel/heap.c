@@ -10,32 +10,37 @@ static virtual_addr_t heap_virtual_start = 0;
 static size_t heap_size = 0;
 
 void heap_init(virtual_addr_t start, size_t size) {
-    // Align the start address to a page boundary (use bitwise AND with 0xFFFFF000)
+    LOG_DEBUG("Starting heap init");
+
+    // Align start address
     virtual_addr_t aligned_addr = start & 0xFFFFF000;
 
-    // Ensure minimum heap size (use HEAP_MIN_SIZE constant)
-    if(size < HEAP_MIN_SIZE) {
+    // Enforce minimum heap size
+    if (size < HEAP_MIN_SIZE) {
         size = HEAP_MIN_SIZE;
     }
-    
-    // Align heap size to page boundary
+
+    // Align heap size to page
     size_t aligned_size = (size + 0xFFF) & 0xFFFFF000;
 
-    // Map pages for the heap using vmm_map_page()
-    //   - Loop through each 4KB page
-    //   - Allocate physical memory with pmm_alloc_block()
-    //   - Map virtual to physical addresses with proper flags (PTE_PRESENT | PTE_READ_WRITE)
-    for(kuint32_t offset = 0; offset < aligned_size; offset += PAGE_SIZE) {
-        virtual_addr_t addr = aligned_addr + offset;
-        physical_addr_t block = (physical_addr_t)pmm_alloc_block();
-        if(!block) {
+    LOG_DEBUG("Starting mapping pages");
+    for (kuint32_t offset = 0; offset < aligned_size; offset += PAGE_SIZE) {
+        virtual_addr_t vaddr = aligned_addr + offset;
+
+        // Allocate a physical page
+        physical_addr_t phys = (physical_addr_t)pmm_alloc_block();
+        if (!phys) {
             LOG_ERR("HEAP Error: Failed to allocate physical memory for heap");
             return;
         }
-        vmm_map_page(addr, block, (PTE_PRESENT | PTE_READ_WRITE));
+
+        // Map the virtual page to the physical page
+        kuint32_t flags = PTE_PRESENT | PTE_READ_WRITE;
+        vmm_map_page(vaddr, phys, flags);
     }
-    
-    // Initialize the first block that represents the entire heap
+LOG_DEBUG("Done mapping pages");
+
+    // Initialize the first heap block
     heap_start = (heap_block_t*)aligned_addr;
     heap_start->size = aligned_size;
     heap_start->next = NULL;
@@ -43,11 +48,12 @@ void heap_init(virtual_addr_t start, size_t size) {
     heap_start->free = 1;
     heap_start->magic = HEAP_MAGIC;
 
-    // Store heap_start, heap_virtual_start, and heap_size in global variables
-    heap_virtual_start = heap_start;
+    heap_virtual_start = (virtual_addr_t)heap_start;
     heap_size = aligned_size;
+
     LOG_INFO("Heap initialized at 0x%x with size 0x%x", heap_virtual_start, heap_size);
 }
+
 
 generic_ptr kmalloc(size_t size) {
     // Check if heap is initialized (heap_start != NULL)

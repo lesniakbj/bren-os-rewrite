@@ -4,6 +4,7 @@
 // TODO: This will be the future layout for the higher-half kernel, once we get there...
 // Higher-half kernel virtual addresses
 #define KERNEL_VIRTUAL_BASE     0xC0000000  // 3GB - Base of higher-half kernel
+#define KERNEL_PHYS_LOAD        0x00100000  // GRUB usually loads us here...
 #define KERNEL_VIRTUAL_END      0xD0000000  // 3.5GB - End of kernel space
 
 // Heap memory layout
