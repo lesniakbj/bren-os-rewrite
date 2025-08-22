@@ -1,9 +1,12 @@
 #include <kernel/log.h>
+#include <kernel/proc.h>
 #include <arch/i386/fault.h>
 
 void general_protection_fault_handler(registers_t* regs) {
-    kuint32_t faulting_address = read_cr2();
+    process_t* current_proc = proc_get_current();
+    
     LOG_ERR("--- GENERAL PROTECTION FAULT ---");
+    LOG_ERR("Fault occurred in process PID %d", current_proc ? current_proc->process_id : -1);
     LOG_ERR("Segments and IP:");
     LOG_ERR("\tCS:EIP: 0x%x:0x%x", regs->cs, regs->eip);
     LOG_ERR("\tDS: 0x%x", regs->ds);
@@ -26,9 +29,20 @@ void general_protection_fault_handler(registers_t* regs) {
     if(regs->error_code) {
         LOG_ERR("SEGMENT ERR: 0x%x", regs->error_code); // ss idx
     }
-    if(faulting_address) {
-        LOG_ERR("Faulting Address: 0x%x", faulting_address);
+    
+    // If this is a user process, terminate it instead of crashing the system
+    if (current_proc && current_proc->proc_type == USER_PROC) {
+        LOG_ERR("Terminating user process PID %d due to privilege violation", current_proc->process_id);
+        proc_terminate(current_proc);
+        
+        // Force a context switch to another process
+        proc_scheduler_run(regs);
+        
+        // This point should never be reached
+        LOG_ERR("System Halted after failed process termination.");
+    } else {
+        LOG_ERR("System Halted.");
     }
-    LOG_ERR("System Halted.");
+    
     for(;;);
 }
